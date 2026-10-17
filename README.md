@@ -1,16 +1,39 @@
-# React + Vite
+# Skill Roulette — Social-first Hackathon Demo
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A React/Vite **browser-only prototype** for spontaneous social discovery, shared interests, and optional skill activities.
 
-Currently, two official plugins are available:
+**Important:** This project currently uses six fictional demo profiles. It does **not** connect real people, authenticate users, send messages to a server, or provide production-grade moderation. Chat replies and the other person's consent are simulated, and Skill Passport records live only in this browser's `localStorage`. Do not deploy it as an unrestricted stranger-chat service.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Run locally
 
-## React Compiler
+```bash
+npm install
+npm run dev
+```
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Visit the local URL printed by Vite. The project specifies Node `24.12.0` in `.node-version`; use a compatible Node installation if npm reports engine warnings.
 
-## Expanding the ESLint configuration
+## Try the experience
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+1. Select **Meet someone** and choose interests.
+2. Preview a fictional match and enter the simulated chat.
+3. Use **Next person** to end the current conversation and browse another match, or **Leave conversation** to return home; neither asks for feedback.
+4. Open **Activities** to choose **Explore together**, **Share a skill**, **Ask for help**, or **Try a challenge**.
+5. Preview both participants accepting. Optional prompts are not prerequisites.
+6. **Stop activity · Return to chat** or **Leave conversation** at any moment, without logging anything.
+7. If you *want* an activity in your Passport, select both opt-ins (the second is only a demo simulation), then click **Save experience (optional)**. The review, when offered, can also be skipped.
+8. Visit **Skill Passport** to see only voluntarily recorded experiences.
+
+## Checks
+
+```bash
+npm run test
+npm run lint
+npm run build
+```
+
+`npm run test` uses Node's built-in test runner for saved-activity rules. `lint` and `build` need the project's npm dependencies installed.
+
+## Next steps before real users
+
+Integrate Firebase/Auth (or another backend) with age-appropriate and opt-in matching, authenticated participant-only chats, session lifecycle enforcement, block/report moderation, and trusted mutual confirmation. Do not trust a browser-supplied peer confirmation or client-side progress counters. See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
