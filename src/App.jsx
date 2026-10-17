@@ -1,83 +1,275 @@
-import Challenges from './features/explore/Challenges'
-import SkillChains from './features/explore/SkillChains'
-import HelpAndSwap from './features/explore/HelpAndSwap'
-import MatchModal from './features/matching/MatchModal'
-import ProfileAvatar from './features/profile/ProfileAvatar'
-import ProfileSettings from './features/profile/ProfileSettings'
-import Passport from './features/passport/Passport'
-import { useEffect, useState } from 'react'
-import { Shuffle, ArrowUpRight, Sun, Moon } from 'lucide-react'
-import { confirmTeaching } from './features/confirmations/confirmation'
-import './App.css'
-import { teachers } from './features/matching/teachers'
-const key = 'skill-roulette-demo-v1'
-function restore() {
-  try { const value = JSON.parse(localStorage.getItem(key)); if (Array.isArray(value?.sessions) && Array.isArray(value?.confirmations)) return value } catch { /* Start a fresh demo if storage is unavailable. */ }
-  return { sessions: [], confirmations: [] }
+import { useEffect, useMemo, useState } from 'react';
+import {
+  ArrowLeft, ArrowRight, Award, BookOpen, Check, CheckCircle2,
+  Clock3, Compass, Flag, Gamepad2, GraduationCap, HeartHandshake, Languages,
+  Menu, MessageCircle, Music2, Palette, RotateCcw, Send, ShieldCheck,
+  Shuffle, Sparkles, Star, Users, X, Code2, Ellipsis, CircleHelp,
+  Ban, Trophy, ArrowLeftRight, LockKeyhole
+} from 'lucide-react';
+import './App.css';
+
+const CATEGORIES = [
+  { id: 'Languages', label: 'Languages', Icon: Languages },
+  { id: 'Music', label: 'Music', Icon: Music2 },
+  { id: 'Gaming', label: 'Gaming', Icon: Gamepad2 },
+  { id: 'Programming', label: 'Programming', Icon: Code2 },
+  { id: 'Design', label: 'Art & design', Icon: Palette },
+  { id: 'Other', label: 'Other skills', Icon: Ellipsis },
+];
+
+const MODES = [
+  { id: 'meet', title: 'Meet someone', description: 'Find people with similar interests and chat.', Icon: Users, tone: 'blue' },
+  { id: 'help', title: 'Get help', description: 'Meet someone who knows what you want to learn.', Icon: GraduationCap, tone: 'green' },
+  { id: 'teach', title: 'Teach or swap', description: 'Share what you know and learn something new.', Icon: ArrowLeftRight, tone: 'amber' },
+];
+
+// Fictional, approved demo profiles. These are never fetched from strangers online.
+const PEOPLE = [
+  { id: 'ava', name: 'Ava', initials: 'AV', categories: ['Languages', 'Music'], expertise: ['Spanish', 'English'], learning: ['Guitar'], rating: 4.9, sessions: 35, helped: 27, hue: 'rose', intro: "Hi! I love helping people practice Spanish. What would you like to work on?", lesson: 'Learn five useful Spanish phrases', steps: ['Learn a greeting', 'Ask a simple question', 'Practice a polite response'], languages: 'Spanish / English' },
+  { id: 'leo', name: 'Leo', initials: 'LE', categories: ['Music', 'Design'], expertise: ['Guitar', 'Music production'], learning: ['Japanese'], rating: 4.8, sessions: 51, helped: 39, hue: 'amber', intro: "Hey! I'm into guitar and making music. What have you been listening to?", lesson: 'Practice three beginner guitar chords', steps: ['Try your first chord', 'Practice changing chords', 'Play a short progression'], languages: 'English' },
+  { id: 'sam', name: 'Sam', initials: 'SA', categories: ['Gaming', 'Programming'], expertise: ['Minecraft', 'Strategy games'], learning: ['Web design'], rating: 4.7, sessions: 20, helped: 15, hue: 'sky', intro: 'Hey! Nice to meet you. What games are you into?', lesson: 'Try one new Minecraft building technique', steps: ['Pick a small build', 'Try a new technique', 'Review the result'], languages: 'English' },
+  { id: 'mina', name: 'Mina', initials: 'MI', categories: ['Languages', 'Design'], expertise: ['Japanese', 'Illustration'], learning: ['Piano'], rating: 4.9, sessions: 30, helped: 24, hue: 'violet', intro: 'Hello! We could practice Japanese or talk about illustration.', lesson: 'Practice a short Japanese introduction', steps: ['Say hello', 'Introduce yourself', 'Ask a follow-up question'], languages: 'Japanese / English' },
+  { id: 'jules', name: 'Jules', initials: 'JU', categories: ['Design', 'Other'], expertise: ['Digital art', 'Photography'], learning: ['Python'], rating: 4.8, sessions: 18, helped: 14, hue: 'teal', intro: 'Hi! Do you want to talk about art, design or something totally new?', lesson: 'Learn one composition technique', steps: ['Choose a subject', 'Try a composition tip', 'Review your artwork'], languages: 'English' },
+  { id: 'ari', name: 'Ari', initials: 'AR', categories: ['Programming', 'Other'], expertise: ['Python', 'React'], learning: ['French'], rating: 5.0, sessions: 22, helped: 16, hue: 'mint', intro: 'Hey! I enjoy helping with beginner coding questions.', lesson: 'Understand a simple Python function', steps: ['Explain the purpose', 'Read a short example', 'Write a tiny function'], languages: 'English' },
+];
+
+const EMPTY_PROGRESS = {
+  sessionsCompleted: 0,
+  taughtSessions: 0,
+  peopleHelped: [],
+  learnedCategories: [],
+  ratedSessions: [],
+  recentActivities: [],
+};
+const KEY = 'skill-roulette-light-demo-v1';
+function readDemo() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(KEY) || '{}');
+    return {
+      progress: { ...EMPTY_PROGRESS, ...(raw.progress || {}) },
+      blocked: Array.isArray(raw.blocked) ? raw.blocked : [],
+    };
+  } catch {
+    return { progress: { ...EMPTY_PROGRESS }, blocked: [] };
+  }
 }
+
+function Avatar({ person, size = 'md', online = false }) {
+  return <span className={`avatar avatar--${size} avatar--${person.hue || 'blue'}`} aria-label={`${person.name} avatar`}>
+    {person.initials || person.name.slice(0, 2).toUpperCase()}
+    {online && <span className="online-dot" />}
+  </span>;
+}
+function Logo({ onClick }) {
+  return <button className="brand" onClick={onClick} aria-label="Go to Skill Roulette homepage">
+    <span className="brand-symbol"><Shuffle size={19} strokeWidth={2.6} /></span><span>Skill <b>Roulette</b></span>
+  </button>;
+}
+function StageTag({ children, kind = 'blue' }) { return <span className={`status-tag status-tag--${kind}`}>{children}</span>; }
+function Stars({ value, small = false }) {
+  return <span className="stars"><Star size={small ? 13 : 17} fill="currentColor" /> <strong>{Number(value).toFixed(1)}</strong></span>;
+}
+
 export default function App() {
-  const [matchContext, setMatchContext] = useState(null)
-  const [matchPool, setMatchPool] = useState(null)
-  const [matchOpen, setMatchOpen] = useState(false)
-  const [profileOpen, setProfileOpen] = useState(false)
-  const [photo, setPhoto] = useState(() => { try { return localStorage.getItem('skill-roulette-photo') || '' } catch { return '' } })
-  const [theme, setTheme] = useState(() => {
-    try { const saved = localStorage.getItem('skill-roulette-theme'); if (saved === 'light' || saved === 'dark') return saved } catch { /* Fall back to system preference. */ }
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-  })
+  const [page, setPage] = useState('home');
+  const [mobileNav, setMobileNav] = useState(false);
+  const [mode, setMode] = useState('meet');
+  const [categories, setCategories] = useState(['Languages', 'Gaming']);
+  const [goal, setGoal] = useState('');
+  const [candidateIndex, setCandidateIndex] = useState(0);
+  const [match, setMatch] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [draft, setDraft] = useState('');
+  const [lessonState, setLessonState] = useState('none'); // none > invited > active > completed
+  const [teacherIsMe, setTeacherIsMe] = useState(false);
+  const [lessonChecks, setLessonChecks] = useState([]);
+  const [myConfirmation, setMyConfirmation] = useState(false);
+  const [peerConfirmation, setPeerConfirmation] = useState(false);
+  const [rating, setRating] = useState(0);
+  const [review, setReview] = useState('');
+  const [reviewSubmitted, setReviewSubmitted] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportReason, setReportReason] = useState('Inappropriate language');
+  const [toast, setToast] = useState('');
+  const [mobileChatTab, setMobileChatTab] = useState('chat');
+  const [demoData, setDemoData] = useState(readDemo);
+  const progress = demoData.progress;
+  const blocked = demoData.blocked;
+
   useEffect(() => {
-    document.documentElement.dataset.theme = theme
-    try { localStorage.setItem('skill-roulette-theme', theme) } catch { /* Theme still works for this visit. */ }
-  }, [theme])
-  function changePhoto(value) {
-    setPhoto(value)
-    try { if (value) localStorage.setItem('skill-roulette-photo', value); else localStorage.removeItem('skill-roulette-photo') }
-    catch { setStorageError('Your photo could not be saved. It will last for this visit only.') }
+    try { localStorage.setItem(KEY, JSON.stringify(demoData)); } catch { /* storage unavailable */ }
+  }, [demoData]);
+
+  const eligible = useMemo(() => PEOPLE.filter(person =>
+    !blocked.includes(person.id) && (!categories.length || person.categories.some(c => categories.includes(c)))
+  ).sort((a, b) => {
+    if (mode !== 'help') return 0;
+    const goalText = goal.toLowerCase();
+    const score = person => person.expertise.some(skill => goalText.includes(skill.toLowerCase())) ? 1 : 0;
+    return score(b) - score(a);
+  }), [categories, blocked, mode, goal]);
+  const candidate = eligible.length ? eligible[candidateIndex % eligible.length] : null;
+  const chosenMode = MODES.find(m => m.id === mode);
+  const sessionGoal = goal.trim() || match?.lesson || 'Learn something new';
+  const allTasksCompleted = lessonChecks.length > 0 && lessonChecks.every(Boolean);
+  const canComplete = allTasksCompleted && myConfirmation && peerConfirmation;
+
+  function navigate(next) { setPage(next); setMobileNav(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+  function startMode(next) { setMode(next); navigate('interests'); }
+  function toggleCategory(id) { setCategories(old => old.includes(id) ? old.filter(x => x !== id) : [...old, id]); setCandidateIndex(0); }
+  function startSearch() { setCandidateIndex(0); navigate('matching'); }
+  function clearLesson() {
+    setLessonState('none'); setTeacherIsMe(mode === 'teach'); setLessonChecks([]);
+    setMyConfirmation(false); setPeerConfirmation(false); setRating(0);
+    setReview(''); setReviewSubmitted(false); setMobileChatTab('chat');
   }
-  const [data, setData] = useState(restore)
-  const [page, setPage] = useState('discover')
-  const [skill, setSkill] = useState('Design')
-  const [match, setMatch] = useState(null)
-  const [sessionId, setSessionId] = useState(null)
-  const [draft, setDraft] = useState('')
-  const [notice, setNotice] = useState('')
-  const [storageError, setStorageError] = useState('')
-  const session = data.sessions.find(item => item.id === sessionId)
-  const completed = data.sessions.filter(item => item.status === 'completed')
-  const total = teacher => teacher.count + data.confirmations.filter(item => item.teacherId === teacher.id).length
-  function save(next) { setData(next); try { localStorage.setItem(key, JSON.stringify(next)) } catch { setStorageError('Storage unavailable: progress lasts until this page closes.') } }
-  function update(changes) { save({ ...data, sessions: data.sessions.map(item => item.id === sessionId ? { ...item, ...changes } : item) }) }
-  const activities = data.activities || []
-  function recordActivity(activity) { save({ ...data, activities: [...activities, { ...activity, id: crypto.randomUUID(), date: Date.now() }] }) }
-  function openSpecialMatch(pool, context) { setMatchPool(pool); setMatchContext(context); setMatch(pool[Math.floor(Math.random() * pool.length)]); setMatchOpen(true) }
-  function nextMatch() {
-    if (!matchPool) { find(); return }
-    const alternatives = matchPool.filter(item => item.id !== match.id)
-    const pool = alternatives.length ? alternatives : matchPool
-    setMatch(pool[Math.floor(Math.random() * pool.length)])
+  function acceptMatch() {
+    if (!candidate) return;
+    setMatch(candidate); clearLesson();
+    setMessages([{ id: 'welcome', who: 'them', body: candidate.intro, time: 'Just now' }]);
+    navigate('chat');
   }
-  function find() { setMatchPool(null); setMatchContext(null); const eligible = teachers.filter(item => item.skill === skill); const other = eligible.filter(item => item.id !== match?.id); const pool = other.length ? other : eligible; setMatch(pool[Math.floor(Math.random() * pool.length)]); setMatchOpen(true) }
-  function start() { setMatchOpen(false); const id = crypto.randomUUID(); save({ ...data, sessions: [...data.sessions, { id, teacherId: match.id, learnerId: 'demo-you', skill: match.skill, mode: matchContext?.mode || 'roulette', offeredSkill: matchContext?.offeredSkill || null, problem: matchContext?.problem || '', startedAt: Date.now(), status: 'active', messages: [] }] }); setSessionId(id); setPage('session'); setNotice('') }
-  function send(event) { event.preventDefault(); if (!draft.trim()) return; update({ messages: [...session.messages, { id: crypto.randomUUID(), text: draft.trim() }] }); setDraft('') }
-  function confirm() { const result = confirmTeaching(data, sessionId, Date.now()); if (result.state) save(result.state); setNotice(result.error || 'Thank you! Your teaching confirmation was added.') }
-  return <>
-    <header><a className="brand" href="#" onClick={event => { event.preventDefault(); setPage('discover') }}><Shuffle/> skillroulette.</a><nav aria-label="Main navigation"><button aria-current={page === 'discover' ? 'page' : undefined} onClick={() => setPage('discover')}>Discover</button><button aria-current={page === 'passport' ? 'page' : undefined} onClick={() => setPage('passport')}>Skill Passport</button>{session && <button onClick={() => setPage('session')}>Your session</button>}</nav><div className="header-tools"><button className="theme-toggle" onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')} aria-label={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}>{theme === 'light' ? <Moon size={17}/> : <Sun size={17}/>}<span>{theme === 'light' ? 'Dark' : 'Light'}</span></button><button className="profile-button" aria-label="Edit your profile photo" onClick={() => setProfileOpen(true)}><ProfileAvatar name="You" photoUrl={photo}/></button></div></header>
-    <div className="demo">Interactive demo · sample teachers, local messages and browser-saved progress. No live matching or calls yet.</div>
-    <div className="feature-nav" role="navigation" aria-label="Learning features">
-  {[['discover', 'Skill Roulette'], ['challenges', '5-minute challenges'], ['chains', 'Skill Chains'], ['sos', 'Skill SOS'], ['swap', 'Cross-skill matching'], ['passport', 'Skill Passport']].map(([id, label]) => <button key={id} aria-current={page === id ? 'page' : undefined} onClick={() => setPage(id)}>{label}</button>)}
-</div>
-    <main>{storageError && <p role="alert">{storageError}</p>}
-      {page === 'discover' && <><div className="hero"><section><span className="eyebrow">✳ A LITTLE CURIOSITY GOES A LONG WAY</span><h1>You know something.<br/>So does <em>someone else.</em></h1><p className="intro">Swap a skill. Share a moment. Meet someone who can teach you something you didn’t know yesterday.</p><a className="text-link" href="#roulette">Let curiosity choose <ArrowUpRight size={18}/></a><div className="community"><span className="avatar peach">MC</span><span className="avatar purple">AR</span><span className="avatar">ST</span><small>No experts required.<br/>Just people helping people.</small></div></section><section className="panel roulette" id="roulette"><span className="eyebrow">YOUR NEXT AHA MOMENT</span><h2>What are you curious about?</h2><p>Pick an interest. Find a little common ground.</p><div className="chips">{['Design', 'JavaScript', 'Photography'].map(item => <button key={item} aria-pressed={skill === item} onClick={() => { setSkill(item); setMatch(null) }}>{item}</button>)}</div><div className="orbit"><span className="floating one">a fresh perspective ↗</span><Shuffle size={55}/><span className="floating two">your next connection ✧</span></div><button className="primary wide" onClick={find}><Shuffle size={18}/>{match ? 'Try another match' : 'Find my match'}<ArrowUpRight size={18}/></button><small className="hint">A shared interest. A random connection. A new possibility.</small></section></div>
-      <section className="how"><div><span className="eyebrow">START WITH HELLO</span><h2>A small exchange.<br/>A bigger world.</h2></div><article><small>01 / CONNECT</small><h3>Find your kind of curious.</h3><p>Meet someone around an interest you share.</p></article><article><small>02 / EXCHANGE</small><h3>A conversation, not a classroom.</h3><p>Ask a question. Share what you know. Keep it casual.</p></article><article><small>03 / GROW</small><h3>Take your learning with you.</h3><p>Build your Skill Passport, one session at a time.</p></article></section></>}
-      {page === 'challenges' && <Challenges data={data} onSave={save}/>}
-      {page === 'chains' && <SkillChains activities={activities} onRecord={recordActivity}/>}
-      {(page === 'sos' || page === 'swap') && <HelpAndSwap key={page} mode={page} onMatch={openSpecialMatch}/>}
-      {page === 'passport' && <Passport completed={completed} activities={activities}/>}
-      {page === 'session' && session && <section className="panel chat"><span className="eyebrow">{session.skill.toUpperCase()} · DEMO SESSION</span><h2>Learning with {teachers.find(item => item.id === session.teacherId)?.name}</h2><p className="count">✓ {total(teachers.find(item => item.id === session.teacherId))} teaching confirmations</p><p className="hint">Messages stay in this browser. No other person receives them.</p><div className="session-context">{session.problem && <p><strong>Your SOS:</strong> {session.problem}</p>}{session.offeredSkill && <p>You share <strong>{session.offeredSkill}</strong> · You practise <strong>{session.skill}</strong></p>}</div><div className="messages" aria-live="polite">{!session.messages.length && <p className="empty">Start with a question. What would you like to learn?</p>}{session.messages.map(message => <div className="message" key={message.id}><small>You</small><p>{message.text}</p></div>)}</div>{session.status === 'active' ? <><form onSubmit={send}><input aria-label="Your message" placeholder="Ask something you’re curious about…" maxLength={2000} value={draft} onChange={event => setDraft(event.target.value)}/><button className="primary" disabled={!draft.trim()}>Send</button></form><button className="secondary" onClick={() => update({ status: 'completed', completedAt: Date.now() })}>End session</button></> : <div><h3>Did you learn something during this session?</h3><p>One confirmation per learner and teacher every 24 hours, following a new completed session. Their total never resets.</p><div className="actions"><button className="primary" disabled={data.confirmations.some(item => item.sessionId === sessionId)} onClick={confirm}>Yes, I learned something</button><button className="secondary" onClick={() => setPage('passport')}>Skip / view Passport</button></div><p role="status">{notice}</p></div>}</section>}
-    </main>{matchOpen && match && <MatchModal teacher={match} total={total(match)} onClose={() => setMatchOpen(false)} onStart={start} onNext={nextMatch} context={matchContext}/>} {profileOpen && <ProfileSettings photo={photo} onPhoto={changePhoto} onClose={() => setProfileOpen(false)}/>}<footer><b>skillroulette.</b><span>A little human connection. A lot of possibility.</span><span>Stay curious ↗</span></footer>
-  </>
+  function nextPerson() {
+    clearLesson(); setMatch(null); setCandidateIndex(old => old + 1); navigate('matching');
+  }
+  function sendMessage(e) {
+    e.preventDefault();
+    const text = draft.trim().slice(0, 600);
+    if (!text || !match) return;
+    setMessages(old => [...old, { id: `me-${Date.now()}-${old.length}`, who: 'me', body: text, time: 'Now' }]);
+    setDraft('');
+  }
+  function simulateReply() {
+    const replies = ["That sounds great! Tell me a little more.", "I can help with that. Want to try a short practice session?", "Nice! We can take it one step at a time.", "That's interesting. What would you like to learn first?"];
+    setMessages(old => [...old, { id: `reply-${Date.now()}-${old.length}`, who: 'them', body: replies[old.length % replies.length], time: 'Now' }]);
+  }
+  function inviteLesson() { setLessonChecks((match?.steps || []).map(() => false)); setLessonState('invited'); setMobileChatTab('lesson'); }
+  function confirmInvite() { setLessonState('active'); setMobileChatTab('lesson'); }
+  function completeLesson() {
+    if (!canComplete || !match || lessonState !== 'active') return;
+    setLessonState('completed');
+    setDemoData(old => {
+      const previous = old.progress;
+      const peopleHelped = teacherIsMe ? [...new Set([...previous.peopleHelped, match.id])] : previous.peopleHelped;
+      const learnedCategories = !teacherIsMe ? [...new Set([...previous.learnedCategories, ...match.categories])] : previous.learnedCategories;
+      const recentActivities = [{ name: match.name, skill: sessionGoal, role: teacherIsMe ? 'Taught' : 'Learned', id: `${Date.now()}-${match.id}` }, ...previous.recentActivities].slice(0, 5);
+      return { ...old, progress: { ...previous, sessionsCompleted: previous.sessionsCompleted + 1, taughtSessions: previous.taughtSessions + (teacherIsMe ? 1 : 0), peopleHelped, learnedCategories, recentActivities } };
+    });
+  }
+  function submitReview() {
+    if (!match || !rating || reviewSubmitted || teacherIsMe) return;
+    setReviewSubmitted(true);
+    setDemoData(old => ({ ...old, progress: { ...old.progress, ratedSessions: [...old.progress.ratedSessions, { personId: match.id, rating, review: review.trim().slice(0, 300), id: Date.now() }] } }));
+    setToast('Review saved to this browser demo.');
+  }
+  function reportUser(shouldBlock) {
+    if (!match) return;
+    if (shouldBlock) setDemoData(old => ({ ...old, blocked: [...new Set([...old.blocked, match.id])] }));
+    setReportOpen(false);
+    setToast(shouldBlock ? 'Demo profile blocked on this device.' : `Demo report noted: ${reportReason}.`);
+    nextPerson();
+  }
+  function resetDemo() {
+    setDemoData({ progress: { ...EMPTY_PROGRESS }, blocked: [] });
+    setMatch(null); setCandidateIndex(0); clearLesson(); setToast('Demo progress reset.'); navigate('home');
+  }
+
+  return <div className="site-shell">
+    <header className="site-header">
+      <div className="header-inner wrap">
+        <Logo onClick={() => navigate('home')} />
+        <nav className={`desktop-nav ${mobileNav ? 'nav-open' : ''}`} aria-label="Main navigation">
+          <button className={page === 'home' ? 'nav-active' : ''} onClick={() => navigate('home')}>Home</button>
+          <button className={['interests', 'matching', 'chat'].includes(page) ? 'nav-active' : ''} onClick={() => startMode('meet')}>Find a match</button>
+          <button className={page === 'passport' ? 'nav-active' : ''} onClick={() => navigate('passport')}>Skill Passport</button>
+        </nav>
+        <div className="header-actions"><StageTag kind="green"><span className="little-dot" /> Demo mode</StageTag><button className="avatar-button" onClick={() => navigate('passport')} aria-label="Open your Skill Passport"><span className="avatar avatar--xs avatar--blue">YOU</span></button><button className="menu-button" aria-label="Toggle navigation" aria-expanded={mobileNav} onClick={() => setMobileNav(!mobileNav)}><Menu size={22}/></button></div>
+      </div>
+    </header>
+
+    <main>
+      {page === 'home' && <>
+        <section className="hero wrap">
+          <div className="hero-text">
+            <span className="eyebrow"><Sparkles size={15} /> A new way to connect</span>
+            <h1>Meet. Learn.<br/><span>Teach.</span></h1>
+            <p>Meet people who share your interests, learn something new, or pass on what you know. All in one simple place.</p>
+            <div className="hero-ctas"><button className="btn btn-primary" onClick={() => startMode('meet')}>Get started <ArrowRight size={18}/></button><button className="btn btn-outline" onClick={() => navigate('passport')}>View Skill Passport</button></div>
+            <div className="hero-footnote"><ShieldCheck size={16}/> Private hackathon demo · Approved fictional profiles only</div>
+          </div>
+          <div className="hero-visual" aria-label="Illustration of people sharing skills">
+            <div className="connection-line connection-line-a"/><div className="connection-line connection-line-b"/>
+            <div className="illustration-avatar avatar-pos-top"><Avatar person={PEOPLE[0]} size="lg"/></div>
+            <div className="illustration-avatar avatar-pos-left"><Avatar person={PEOPLE[2]} size="lg"/></div>
+            <div className="illustration-avatar avatar-pos-right"><Avatar person={PEOPLE[3]} size="lg"/></div>
+            <span className="skill-orb skill-orb-left"><Gamepad2 size={22}/></span><span className="skill-orb skill-orb-right"><Languages size={22}/></span>
+            <div className="center-emblem"><HeartHandshake size={32}/></div>
+            <div className="floating-caption"><span className="little-dot"/> Learn something together</div>
+          </div>
+        </section>
+        <section className="path-section section-tinted">
+          <div className="wrap">
+            <div className="section-heading"><span className="section-eyebrow">CHOOSE YOUR PATH</span><h2>What would you like to do?</h2><p>Start with a goal. We'll help you find the right connection.</p></div>
+            <div className="mode-grid">
+              {MODES.map(item => <button key={item.id} className="mode-card" onClick={() => startMode(item.id)}><span className={`mode-icon mode-icon--${item.tone}`}><item.Icon size={29}/></span><h3>{item.title}</h3><p>{item.description}</p><span className="mode-arrow"><ArrowRight size={20}/></span></button>)}
+            </div>
+          </div>
+        </section>
+        <section className="why-section wrap"><div className="why-row"><div><span className="why-icon"><Compass size={20}/></span><strong>Shared interests</strong><p>Start conversations with common ground.</p></div><div><span className="why-icon"><Clock3 size={20}/></span><strong>Quick sessions</strong><p>Turn a chat into a small learning moment.</p></div><div><span className="why-icon"><Award size={20}/></span><strong>Real progress</strong><p>Keep track of what you teach and learn.</p></div></div></section>
+      </>}
+
+      {page === 'interests' && <section className="flow-page wrap narrow-flow">
+        <div className="backline"><button className="back-button" onClick={() => navigate('home')}><ArrowLeft size={17}/> Back</button><div className="step-label">Step 1 of 2</div></div>
+        <div className="progress-steps"><span className="step-current"/><span/><span/></div>
+        <div className="flow-title"><StageTag>{chosenMode.title}</StageTag><h1>What are you interested in?</h1><p>Choose one or more categories to help us find a good match.</p></div>
+        <div className="category-grid">{CATEGORIES.map(({ id, label, Icon }) => <button key={id} className={`category-tile ${categories.includes(id) ? 'selected' : ''}`} aria-pressed={categories.includes(id)} onClick={() => toggleCategory(id)}><span className="category-icon"><Icon size={23}/></span><strong>{label}</strong><span className="selection-indicator">{categories.includes(id) && <Check size={13} strokeWidth={3}/>}</span></button>)}</div>
+        <label className="field-label" htmlFor="goal">{mode === 'meet' ? 'Anything you want to talk about?' : mode === 'help' ? 'What would you like help with?' : 'What would you like to teach?' } <span>(optional)</span></label>
+        <input id="goal" className="text-input" placeholder="e.g. Practice Japanese, learn guitar, play Minecraft" value={goal} onChange={e => setGoal(e.target.value.slice(0, 100))}/>
+        <button className="btn btn-primary full" disabled={categories.length === 0} onClick={startSearch}>Continue <ArrowRight size={18}/></button>
+        <p className="small-note"><ShieldCheck size={15}/> Only fictional demo profiles are used in this prototype.</p>
+      </section>}
+
+      {page === 'matching' && <section className="flow-page wrap narrow-flow matching-page">
+        <div className="backline"><button className="back-button" onClick={() => navigate('interests')}><ArrowLeft size={17}/> Edit interests</button><div className="step-label">Step 2 of 2</div></div>
+        <div className="progress-steps"><span className="step-current"/><span className="step-current"/><span/></div>
+        {candidate ? <><div className="flow-title"><StageTag kind="green">Demo match available</StageTag><h1>Meet your next connection</h1><p>Here's a suggested match based on your selected interests.</p></div>
+          <div className="match-preview"><div className="match-top"><Avatar person={candidate} size="xl" online/><div className="match-title"><h2>{candidate.name}</h2><p>{candidate.categories.join(' · ')}</p><Stars value={candidate.rating} /></div><StageTag kind="green">Demo profile</StageTag></div>
+            <div className="tag-group"><span>Teaches: {candidate.expertise.join(', ')}</span><span>Learning: {candidate.learning.join(', ')}</span></div>
+            <div className="match-stats"><div><strong>{candidate.sessions}</strong><span>Example sessions</span></div><div><strong>{candidate.helped}</strong><span>Example people helped</span></div></div>
+            <p className="match-context">{chosenMode.title} · {categories.join(', ')}{goal.trim() ? ` · ${goal.trim()}` : ''}</p>
+            <button className="btn btn-primary full" onClick={acceptMatch}>Preview mutually accepted chat <ArrowRight size={18}/></button><button className="btn btn-outline full" onClick={nextPerson}><Shuffle size={17}/> Try another match</button>
+          </div>
+          <p className="small-note"><LockKeyhole size={15}/> The live version will require acceptance from both real users.</p>
+        </> : <div className="empty-results"><CircleHelp size={32}/><h2>No demo matches found</h2><p>Try another interest or reset any blocked profiles in your Skill Passport.</p><button className="btn btn-primary" onClick={() => navigate('interests')}>Edit interests</button></div>}
+      </section>}
+
+      {page === 'chat' && match && <section className="chat-page wrap">
+        <div className="chat-page-heading"><button className="back-button" onClick={() => navigate('matching')}><ArrowLeft size={17}/> Back to matches</button><StageTag kind="green"><span className="little-dot"/> Simulated conversation</StageTag></div>
+        <div className="chat-layout">
+          <div className={`chat-column ${mobileChatTab === 'lesson' ? 'hide-on-mobile' : ''}`}>
+            <div className="chat-person-bar"><div className="person-identity"><Avatar person={match} online/><div><h2>{match.name}</h2><p>{match.categories.join(' · ')}</p></div></div><div className="chat-toolbar"><button title="Next match" onClick={nextPerson}><Shuffle size={18}/><span>Next</span></button><button title="Report or block" onClick={() => setReportOpen(true)}><Flag size={18}/></button></div></div>
+            <div className="chat-messages"><div className="chat-disclaimer"><ShieldCheck size={15}/> This is a simulated chat. No messages leave your device.</div>{messages.map(message => <div key={message.id} className={`message-line ${message.who === 'me' ? 'message-line--me' : ''}`}>{message.who === 'them' && <Avatar person={match} size="xs"/>}<div className={`message-bubble ${message.who === 'me' ? 'message-bubble--me' : ''}`}><p>{message.body}</p><span>{message.time}</span></div></div>)}</div>
+            <div className="chat-bottom"><button className="demo-reply" onClick={simulateReply}><RotateCcw size={14}/> Simulate a reply from {match.name}</button><form className="message-form" onSubmit={sendMessage}><input aria-label="Message" value={draft} onChange={e => setDraft(e.target.value)} placeholder="Type a message..." maxLength={600}/><button type="submit" aria-label="Send message" disabled={!draft.trim()}><Send size={19}/></button></form></div>
+          </div>
+          <div className={`lesson-column ${mobileChatTab === 'chat' ? 'hide-on-mobile' : ''}`}>
+            <div className="lesson-header"><span className="lesson-icon"><GraduationCap size={22}/></span><div><h2>Teaching session</h2><p>Make the conversation a learning moment.</p></div></div>
+            {lessonState === 'none' && <div className="lesson-content"><StageTag>Suggested activity</StageTag><h3>{sessionGoal}</h3><p className="lesson-summary">Want to practice together? Turn this chat into a short skill session.</p><label className="teacher-checkbox"><input type="checkbox" checked={teacherIsMe} onChange={e => setTeacherIsMe(e.target.checked)}/> I'll be the teacher</label><div className="lesson-actions"><button className="btn btn-green full" onClick={inviteLesson}>Offer a teaching session <ArrowRight size={17}/></button></div></div>}
+            {lessonState === 'invited' && <div className="lesson-content"><StageTag kind="amber">Invitation pending</StageTag><h3>{sessionGoal}</h3><p>In the real app, both people would accept this invitation. For now, use the demo confirmation below.</p><button className="btn btn-green full" onClick={confirmInvite}><Check size={17}/> Simulate both accepting</button><button className="btn btn-outline full" onClick={() => setLessonState('none')}>Cancel invitation</button></div>}
+            {lessonState === 'active' && <div className="lesson-content"><StageTag kind="green"><span className="little-dot"/> Session in progress</StageTag><h3>{sessionGoal}</h3><p>Work through these small steps together.</p><div className="lesson-checklist">{match.steps.map((step, index) => <label key={step} className={lessonChecks[index] ? 'task-done' : ''}><input type="checkbox" checked={lessonChecks[index] || false} onChange={e => setLessonChecks(old => old.map((v, i) => index === i ? e.target.checked : v))}/>{step}</label>)}</div><div className="session-confirmations"><strong>Finish together</strong><p>Both participants must confirm a completed session.</p><label><input type="checkbox" checked={myConfirmation} onChange={e => setMyConfirmation(e.target.checked)}/> I confirm this session happened</label><label><input type="checkbox" checked={peerConfirmation} onChange={e => setPeerConfirmation(e.target.checked)}/> Simulate {match.name}'s confirmation</label></div><button className="btn btn-green full" onClick={completeLesson} disabled={!canComplete}><CheckCircle2 size={18}/> Complete session</button><button className="btn btn-outline full" onClick={() => setLessonState('none')}>End without recording</button></div>}
+            {lessonState === 'completed' && <div className="lesson-content lesson-completed"><div className="success-circle"><Check size={29}/></div><h3>Session completed!</h3><p>Nice work. This learning experience has been added to your Skill Passport on this device.</p>{!teacherIsMe && <button className="btn btn-primary full" onClick={() => navigate('review')}>Rate your experience <ArrowRight size={18}/></button>}<button className="btn btn-outline full" onClick={() => navigate('passport')}>View Skill Passport</button></div>}
+            <div className="lesson-footer"><ShieldCheck size={16}/> This teaching flow uses demo data, not verified credentials.</div>
+          </div>
+        </div>
+        <div className="mobile-chat-switch"><button className={mobileChatTab === 'chat' ? 'selected' : ''} onClick={() => setMobileChatTab('chat')}><MessageCircle size={16}/> Chat</button><button className={mobileChatTab === 'lesson' ? 'selected' : ''} onClick={() => setMobileChatTab('lesson')}><GraduationCap size={16}/> Learning session</button></div>
+      </section>}
+
+      {page === 'review' && match && <section className="review-page wrap narrow-flow"><div className="backline"><button className="back-button" onClick={() => navigate('chat')}><ArrowLeft size={17}/> Back to session</button></div><div className="review-panel"><div className="success-circle"><Check size={30}/></div><h1>Session completed!</h1><p>How was your learning experience with {match.name}?</p>{!teacherIsMe && !reviewSubmitted ? <><div className="rate-stars" aria-label="Choose a rating">{[1, 2, 3, 4, 5].map(n => <button key={n} aria-label={`${n} stars`} onClick={() => setRating(n)}><Star size={36} fill={n <= rating ? '#f7b84b' : 'none'} color={n <= rating ? '#f7b84b' : '#c7ced9'}/></button>)}</div><label className="sr-only" htmlFor="review-text">Optional review</label><textarea id="review-text" rows={4} maxLength={300} value={review} onChange={e => setReview(e.target.value)} placeholder="Leave a short review (optional)..."/><button className="btn btn-primary full" disabled={!rating} onClick={submitReview}>Submit review</button></> : <StageTag kind="green"><Check size={15}/> {reviewSubmitted ? 'Review saved locally' : 'Contribution recorded'}</StageTag>}<div className="review-passport"><BookOpen size={21}/><div><strong>+1 completed session</strong><span>Added to your Skill Passport</span></div></div><button className="btn btn-outline full" onClick={() => navigate('passport')}>Open Skill Passport <ArrowRight size={18}/></button></div></section>}
+
+      {page === 'passport' && <section className="passport-page wrap"><div className="passport-heading"><div><span className="section-eyebrow">YOUR LEARNING JOURNEY</span><h1>Skill Passport</h1><p>A simple record of the things you've learned and shared.</p></div><button className="btn btn-primary" onClick={() => startMode('meet')}>Explore a skill <ArrowRight size={17}/></button></div><div className="passport-layout"><div className="passport-main"><div className="passport-profile"><Avatar person={{ name: 'You', initials: 'YOU', hue: 'blue' }} size="xl"/><div><h2>Your demo passport</h2><p>Curious learner · Helpful community member</p><StageTag kind="green"><ShieldCheck size={14}/> Private demo profile</StageTag></div></div><div className="passport-stat-grid"><div><BookOpen size={22}/><strong>{progress.sessionsCompleted}</strong><span>Sessions completed</span></div><div><HeartHandshake size={22}/><strong>{progress.peopleHelped.length}</strong><span>People helped</span></div><div><Compass size={22}/><strong>{progress.learnedCategories.length}</strong><span>Categories explored</span></div></div><div className="passport-subsection"><h3>Recent learning activity</h3>{progress.recentActivities.length ? <div className="activity-list">{progress.recentActivities.map(item => <div key={item.id}><span className="activity-icon"><Check size={17}/></span><div><strong>{item.role}: {item.skill}</strong><small>With {item.name} · Demo session</small></div></div>)}</div> : <div className="empty-activity"><Sparkles size={20}/><span>No sessions yet. Complete a teaching or learning session to see your progress here.</span></div>}</div><div className="passport-subsection"><h3>Achievements</h3><div className="achievement-row">{progress.sessionsCompleted > 0 ? <span className="achievement"><Award size={17}/> First session</span> : <span className="empty-tag">First session — not earned yet</span>}{progress.taughtSessions > 0 && <span className="achievement"><GraduationCap size={17}/> Helpful teacher</span>}{progress.learnedCategories.length >= 2 && <span className="achievement"><Compass size={17}/> Skill explorer</span>}</div></div></div><aside className="passport-aside"><div className="aside-heading"><Trophy size={24}/><h3>Every skill counts</h3></div><p>Whether you're teaching or learning, even a short session can be meaningful.</p><div className="passport-aside-row"><Star size={19}/><span>{progress.ratedSessions.length} reviews given</span></div><div className="passport-aside-row"><GraduationCap size={19}/><span>{progress.taughtSessions} teaching sessions</span></div><div className="aside-notice"><LockKeyhole size={18}/> These numbers are stored locally and are not verified credentials.</div><button className="reset-link" onClick={resetDemo}><RotateCcw size={15}/> Reset demo progress and blocked profiles</button></aside></div></section>}
+    </main>
+    <footer className="site-footer"><div className="wrap footer-inner"><span><strong>Skill Roulette</strong> · Meet. Learn. Teach.</span><span>Hackathon prototype · Simulated accounts only</span></div></footer>
+
+    {reportOpen && <div className="modal-backdrop" role="presentation" onMouseDown={e => { if (e.target === e.currentTarget) setReportOpen(false); }}><div role="dialog" aria-modal="true" aria-labelledby="report-title" className="report-modal"><div className="modal-heading"><h2 id="report-title">Report or block {match?.name}</h2><button aria-label="Close report dialog" onClick={() => setReportOpen(false)}><X size={20}/></button></div><p>During this demo, reports are only recorded as a local confirmation. A public platform would need a real moderation service.</p><label htmlFor="reason">Reason for reporting</label><select id="reason" value={reportReason} onChange={e => setReportReason(e.target.value)}><option>Inappropriate language</option><option>Bullying or harassment</option><option>Unwanted contact information</option><option>Other concern</option></select><button className="btn btn-outline full" onClick={() => reportUser(false)}><Flag size={17}/> Submit demo report</button><button className="btn btn-danger full" onClick={() => reportUser(true)}><Ban size={17}/> Block this demo profile</button></div></div>}
+    {toast && <div role="status" className="toast"><CheckCircle2 size={17}/>{toast}<button aria-label="Dismiss message" onClick={() => setToast('')}><X size={16}/></button></div>}
+  </div>;
 }
-
-
-
-
