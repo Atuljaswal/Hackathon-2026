@@ -3,7 +3,6 @@ import { Menu, Flag, Ban, X, CheckCircle2 } from 'lucide-react';
 import './App.css';
 import './auth-pages.css'
 import { canSaveActivity, recordSavedActivity } from './activityLogic.js';
-import SkillCall from "./components/SkillCall";
 import { getLiveKitToken } from "./livekitService";
 import { PEOPLE, MODES, ACTIVITY_PROMPTS, EMPTY_PROGRESS, KEY, readDemo } from './data/demoData.js';
 import { Logo } from './components/Shared.jsx';
@@ -46,6 +45,9 @@ export default function App() {
   const [demoData, setDemoData] = useState(readDemo);
   const progress = demoData.progress;
   const blocked = demoData.blocked;
+  const [inCall, setInCall] = useState(false);
+  const [livekitToken, setLivekitToken] = useState(null);
+  const [livekitServerUrl, setLivekitServerUrl] = useState(null);
   const [activity, setActivity] = useState('') // share, getHelp, challenge, other
 
   useEffect(() => subscribeToAuth(currentUser => {
@@ -82,6 +84,7 @@ export default function App() {
   async function handleLogout() {
     try {
       await logout();
+      endcall();
       navigate('home');
     } catch {
       setToast('Could not log out. Please try again.');
@@ -101,6 +104,8 @@ export default function App() {
     setToast(alreadySaved ? 'Back to chat. Your saved experience remains in the Passport.' : 'Activity ended. Nothing was added to your Skill Passport.');
   }
   function endConversation(destination) {
+    endCall();
+
     clearLesson(); setMatch(null); setMessages([]); setDraft(''); setReportOpen(false);
     if (destination === 'matching') {
       setCandidateIndex(old => old + 1);
@@ -170,6 +175,24 @@ export default function App() {
     setMatch(null); setCandidateIndex(0); setMessages([]); setDraft(''); clearLesson();
     setToast('Demo progress reset.'); navigate('home');
   }
+  async function startCall(matchId) {
+  try {
+    const { token, serverUrl } = await getLiveKitToken(matchId);
+
+    setLivekitToken(token);
+    setLivekitServerUrl(serverUrl);
+    setInCall(true);
+  } catch (error) {
+    console.error("Could not start call:", error);
+    setToast(error.message);
+  }
+}
+
+  function endCall() {
+    setInCall(false);
+   setLivekitToken(null);
+    setLivekitServerUrl(null);
+  }
 
   return (
   <div className="site-shell">
@@ -201,7 +224,7 @@ export default function App() {
       {page === 'chat' && match && <ChatPage {...{match,mobileChatTab,leaveChat,nextPerson,setReportOpen,messages,simulateReply,draft,setDraft,sendMessage,
           lessonState,activityType,selectActivity,activityTopic,setActivityTopic,activityDefaults,inviteLesson,
           stopActivity,confirmInviteB,lessonChecks,setLessonChecks,myConfirmation,setMyConfirmation,
-          peerConfirmation,setPeerConfirmation,canSave,completeLesson,isTeachingActivity,teacherIsMe,navigate,sessionGoal,setMobileChatTab}} />}
+          peerConfirmation,setPeerConfirmation,canSave,completeLesson,isTeachingActivity,teacherIsMe,navigate,sessionGoal,setMobileChatTab, inCall, livekitToken, startCall, endCall}} serverUrl = {import.meta.env.VITE_LIVEKIT_URL} />}
       {page === 'review' && match && <ReviewPage {...{match,navigate,activityType,reviewSubmitted,rating,setRating,review,setReview,
           submitReview,stopActivity,leaveChat,teacherIsMe,lessonState}} />}
       {page === 'passport' && <SkillPassportPage progress={progress} startMode={startMode} resetDemo={resetDemo} />}
