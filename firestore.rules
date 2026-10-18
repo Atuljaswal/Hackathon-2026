@@ -7,11 +7,12 @@ service cloud.firestore {
     function signedIn() { return request.auth != null; }
     function isOwner(uid) { return signedIn() && request.auth.uid == uid; }
     function isTester() {
-      return signedIn() && exists(/databases/$(database)/documents/approvedTesters/$(request.auth.uid));
-    }
-    function approved(uid) {
-      return exists(/databases/$(database)/documents/approvedTesters/$(uid));
-    }
+      return signedIn() &&
+      exists(/databases/$(database)/documents/users/$(request.auth.uid));
+}
+function approved(uid) {
+  return exists(/databases/$(database)/documents/users/$(uid));
+}
     function lobbyPath(uid) { return /databases/$(database)/documents/lobby/$(uid); }
     function savedDisplayName(uid) {
       return get(/databases/$(database)/documents/users/$(uid)).data.displayName;
