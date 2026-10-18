@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react';
 import { signUp, login, logout, subscribeToAuth } from '../services/authService.js';
 import { getMyProfile, updateMySkills } from '../services/userService.js';
+import { useEffect, useState } from 'react';
+import { signUp, login, logout, subscribeToAuth } from '../services/authService.js';
+import { getMyProfile, updateMySkills } from '../services/userService.js';
+import MatchDevPanel from './MatchDevPanel.jsx';
 import VideoCallDevPanel from './VideoCallDevPanel.jsx';
 
 const fieldStyle = { display: 'block', width: '100%', padding: 9, border: '1px solid #bbb', borderRadius: 8 };
@@ -73,7 +77,7 @@ export default function AuthDevPanel() {
       <label style={{ display: 'block', marginBottom: 12 }}>Categories (comma-separated)
         <input style={fieldStyle} value={skills} onChange={e => setSkills(e.target.value)} />
       </label>
-      <button style={buttonStyle} disabled={busy} onClick={() => run('Save interests', () => updateMySkills({ categories: split(skills), canTeach: [], wantsToLearn: [] }))}>Save interests</button>
+      <button style={buttonStyle} disabled={busy} onClick={() => run('Save interests', () => updateMySkills({ categories: split(skills), canTeach: [], wantsToLearn: [] }))}>Save interests</button><MatchDevPanel />
     </section>}
     {user && <VideoCallDevPanel key={user.uid} />}
     <p style={{ marginTop: 24, fontSize: 13, color: '#555' }}>Never use this developer page to collect real users' credentials. For controlled local testing only.</p>
