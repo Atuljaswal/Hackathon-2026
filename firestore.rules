@@ -1,0 +1,380 @@
+// Replace existing Firestore Rules ONLY if you still use the Auth Starter
+// rules. Otherwise review/merge these paths with your team's current rules.
+// This is for APPROVED TEST ACCOUNTS in ONE controlled cohort, not public chat.
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function isOwner(uid) { return signedIn() && request.auth.uid == uid; }
+    function isTester() {
+      return signedIn() && exists(/databases/$(database)/documents/approvedTesters/$(request.auth.uid));
+    }
+    function approved(uid) {
+      return exists(/databases/$(database)/documents/approvedTesters/$(uid));
+    }
+    function lobbyPath(uid) { return /databases/$(database)/documents/lobby/$(uid); }
+    function savedDisplayName(uid) {
+      return get(/databases/$(database)/documents/users/$(uid)).data.displayName;
+    }
+    function ownsCategory(uid, category) {
+      return category in get(/databases/$(database)/documents/users/$(uid)).data.categories;
+    }
+    function validProfile(data, uid) {
+      return data.keys().hasOnly([
+        'uid', 'displayName', 'categories', 'canTeach',
+        'wantsToLearn', 'createdAt', 'updatedAt'
+      ]) && data.keys().hasAll([
+        'uid', 'displayName', 'categories', 'canTeach',
+        'wantsToLearn', 'createdAt', 'updatedAt'
+      ]) && data.uid == uid
+        && data.displayName is string && data.displayName.size() >= 2
+        && data.displayName.size() <= 40
+        && data.categories is list && data.categories.size() <= 10
+        && data.canTeach is list && data.canTeach.size() <= 20
+        && data.wantsToLearn is list && data.wantsToLearn.size() <= 20;
+    }
+    match /users/{uid} {
+      allow get: if isOwner(uid);
+      allow list: if false;
+      allow create: if isOwner(uid) && validProfile(request.resource.data, uid)
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+      allow update: if isOwner(uid) && validProfile(request.resource.data, uid)
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'displayName', 'categories', 'canTeach', 'wantsToLearn', 'updatedAt'
+        ]);
+      allow delete: if false;
+    }
+    // Provision these manually in Firebase Console. Never allow self-approval.
+    match /approvedTesters/{uid} {
+      allow get: if isOwner(uid);
+      allow list, create, update, delete: if false;
+    }
+    function validLobby(data, uid) {
+      return data.keys().hasAll(['uid','category','status','updatedAt'])
+        && data.keys().hasOnly(['uid','category','status','updatedAt','matchId','displayName'])
+        && data.uid == uid
+        && (!('displayName' in data) || (data.displayName is string
+          && data.displayName.size() >= 2 && data.displayName.size() <= 40))
+        && data.category is string
+        && data.category.size() >= 2 && data.category.size() <= 40
+        && data.status in ['waiting', 'busy']
+        && (data.status == 'waiting' && !('matchId' in data)
+            || data.status == 'busy' && data.matchId is string
+              && data.matchId.size() >= 1 && data.matchId.size() <= 128)
+        && data.updatedAt == request.time
+        && ownsCategory(uid, data.category);
+    }
+    function closingLinkedMatch(uid) {
+      let matchPath = /databases/$(database)/documents/matchRequests/$(resource.data.matchId);
+      let before = get(matchPath).data;
+      let after = getAfter(matchPath).data;
+      return resource.data.status == 'busy'
+        && 'matchId' in resource.data
+        && before.status in ['pending', 'accepted']
+        && after.status in ['ended', 'expired']
+        && after.updatedAt == request.time
+        && (before.from == uid || before.to == uid)
+        && (before.from == request.auth.uid || before.to == request.auth.uid);
+    }
+    // A matcher may reserve only its intended partner, as part of creating a
+    // pending two-party request in the same atomic transaction.
+    function reservingPartner(uid) {
+      let proposed = getAfter(/databases/$(database)/documents/matchRequests/$(request.resource.data.matchId)).data;
+      return resource.data.status == 'waiting'
+        && request.resource.data.status == 'busy'
+        && proposed.from == request.auth.uid
+        && proposed.to == uid
+        && proposed.status == 'pending'
+        && proposed.acceptedBy.size() == 0
+        && proposed.category == resource.data.category
+        && proposed.createdAt == request.time;
+    }
+    function requeuedAfterExpiry(uid) {
+      return getAfter(lobbyPath(uid)).data.status == 'waiting'
+        && !('matchId' in getAfter(lobbyPath(uid)).data)
+        && getAfter(lobbyPath(uid)).data.updatedAt == request.time;
+    }
+    match /lobby/{uid} {
+      // No emails or private profiles in the lobby, only opted-in testers.
+      allow get, list: if isTester();
+      allow create: if isTester() && isOwner(uid)
+        && validLobby(request.resource.data, uid)
+        && request.resource.data.status == 'waiting'
+        && request.resource.data.displayName == savedDisplayName(uid);
+      // Users own their own queue; a matcher can reserve a partner only when
+      // creating a pending proposal, and a matched peer can return the other
+      // to waiting only when ending/expiring the linked proposal.
+      allow update: if isTester()
+        && validLobby(request.resource.data, uid)
+        && request.resource.data.category == resource.data.category
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','updatedAt','matchId','displayName'])
+        && (
+          (isOwner(uid) && (
+            !request.resource.data.diff(resource.data).affectedKeys().hasAny(['displayName'])
+            || request.resource.data.displayName == savedDisplayName(uid)
+          ))
+          || (!isOwner(uid)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','updatedAt','matchId'])
+            && reservingPartner(uid))
+          || (!isOwner(uid)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','updatedAt','matchId'])
+            && resource.data.status == 'busy'
+            && request.resource.data.status == 'waiting'
+            && !('matchId' in request.resource.data)
+            && closingLinkedMatch(uid))
+        );
+      // Only the leaver can delete their own queue entry. The other
+      // participant is returned to waiting, never deleted by the leaver.
+      allow delete: if isTester() && isOwner(uid) && (
+        resource.data.status == 'waiting'
+        || !('matchId' in resource.data)
+        || closingLinkedMatch(uid)
+      );
+    }
+    match /matchRequests/{matchId} {
+      allow get, list: if isTester() && (
+        resource.data.from == request.auth.uid || resource.data.to == request.auth.uid
+      );
+      allow create: if isTester()
+        && request.resource.data.keys().hasAll([
+          'from','to','fromDisplayName','toDisplayName','category','status','acceptedBy','createdAt','updatedAt'
+        ])
+        && request.resource.data.keys().hasOnly([
+          'from','to','fromDisplayName','toDisplayName','category','status','acceptedBy','createdAt','updatedAt'
+        ])
+        && request.resource.data.from == request.auth.uid
+        && request.resource.data.to is string
+        && request.resource.data.from != request.resource.data.to
+        && approved(request.resource.data.to)
+        && request.resource.data.fromDisplayName is string
+        && request.resource.data.toDisplayName is string
+        && request.resource.data.fromDisplayName.size() >= 2
+        && request.resource.data.fromDisplayName.size() <= 40
+        && request.resource.data.toDisplayName.size() >= 2
+        && request.resource.data.toDisplayName.size() <= 40
+        && request.resource.data.fromDisplayName == get(lobbyPath(request.resource.data.from)).data.displayName
+        && request.resource.data.toDisplayName == get(lobbyPath(request.resource.data.to)).data.displayName
+        && request.resource.data.category is string
+        && request.resource.data.category.size() >= 2
+        && request.resource.data.category.size() <= 40
+        && request.resource.data.status == 'pending'
+        && request.resource.data.acceptedBy is list
+        && request.resource.data.acceptedBy.size() == 0
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time
+        && exists(lobbyPath(request.resource.data.from))
+        && exists(lobbyPath(request.resource.data.to))
+        && get(lobbyPath(request.resource.data.from)).data.status == 'waiting'
+        && getAfter(lobbyPath(request.resource.data.from)).data.status == 'busy'
+        && getAfter(lobbyPath(request.resource.data.from)).data.matchId == matchId
+        && getAfter(lobbyPath(request.resource.data.from)).data.updatedAt == request.time
+        && getAfter(lobbyPath(request.resource.data.from)).data.category == request.resource.data.category
+        && get(lobbyPath(request.resource.data.to)).data.status == 'waiting'
+        && getAfter(lobbyPath(request.resource.data.to)).data.status == 'busy'
+        && getAfter(lobbyPath(request.resource.data.to)).data.matchId == matchId
+        && getAfter(lobbyPath(request.resource.data.to)).data.updatedAt == request.time
+        && get(lobbyPath(request.resource.data.to)).data.category == request.resource.data.category
+        && getAfter(lobbyPath(request.resource.data.to)).data.category == request.resource.data.category;
+      // A single participant can add ONLY their own acceptance.
+      // The second acceptance atomically transitions pending -> accepted.
+      allow update: if isTester()
+        && (resource.data.from == request.auth.uid || resource.data.to == request.auth.uid)
+        && request.resource.data.updatedAt == request.time
+        && (
+          (resource.data.status == 'pending'
+            && request.time < resource.data.createdAt + duration.value(60, 's')
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              'acceptedBy','status','updatedAt'
+            ])
+            && resource.data.acceptedBy is list
+            && request.resource.data.acceptedBy is list
+            && request.auth.uid in request.resource.data.acceptedBy
+            && !(request.auth.uid in resource.data.acceptedBy)
+            && request.resource.data.acceptedBy.hasAll(resource.data.acceptedBy)
+            && request.resource.data.acceptedBy.hasOnly([resource.data.from, resource.data.to])
+            && request.resource.data.acceptedBy.size() == resource.data.acceptedBy.size() + 1
+            && (
+              (request.resource.data.acceptedBy.size() == 1
+                && request.resource.data.status == 'pending')
+              || (request.resource.data.acceptedBy.size() == 2
+                && request.resource.data.status == 'accepted')
+            )
+            && get(lobbyPath(resource.data.from)).data.status == 'busy'
+            && get(lobbyPath(resource.data.from)).data.matchId == matchId
+            && get(lobbyPath(resource.data.to)).data.status == 'busy'
+            && get(lobbyPath(resource.data.to)).data.matchId == matchId)
+          // Leave / Next closes a pending or active connection.
+          || (resource.data.status in ['pending','accepted']
+            && request.resource.data.status == 'ended'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','updatedAt']))
+          // Timeout: both are requeued after the server-side deadline.
+          || (resource.data.status == 'pending'
+            && request.time >= resource.data.createdAt + duration.value(60, 's')
+            && request.resource.data.status == 'expired'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','updatedAt'])
+            && requeuedAfterExpiry(resource.data.from)
+            && requeuedAfterExpiry(resource.data.to))
+        );
+      allow delete: if false;
+    }
+    // Private text chat for accepted two-sided matches only.
+    // Read access ends when the match is no longer accepted.
+    function isAcceptedMatchParticipant(matchId) {
+      let matchPath = /databases/$(database)/documents/matchRequests/$(matchId);
+      let linked = get(matchPath).data;
+      return exists(matchPath)
+        && linked.status == 'accepted'
+        && linked.acceptedBy is list
+        && linked.acceptedBy.hasAll([linked.from, linked.to])
+        && (linked.from == request.auth.uid || linked.to == request.auth.uid);
+    }
+    match /matchRequests/{matchId}/messages/{messageId} {
+      allow get: if isTester() && isAcceptedMatchParticipant(matchId);
+      // All chat readers must use a bounded query (100 latest messages).
+      allow list: if isTester()
+        && request.query.limit != null && request.query.limit <= 100
+        && isAcceptedMatchParticipant(matchId);
+      allow create: if isTester()
+        && isAcceptedMatchParticipant(matchId)
+        && request.resource.data.keys().hasOnly(['senderId', 'text', 'createdAt'])
+        && request.resource.data.keys().hasAll(['senderId', 'text', 'createdAt'])
+        && request.resource.data.senderId == request.auth.uid
+        && request.resource.data.text is string
+        && request.resource.data.text.size() >= 1
+        && request.resource.data.text.size() <= 1000
+        && request.resource.data.createdAt == request.time;
+      allow update, delete: if false;
+    }
+    // Optional Skill Activities: one "current" invitation per accepted match.
+    // Both people decide independently. Stopping an activity never ends chat.
+    function validActivity(data) {
+      return data.keys().hasOnly([
+          'activityId', 'createdBy', 'type', 'topic', 'status', 'acceptedBy', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasAll([
+          'activityId', 'createdBy', 'type', 'topic', 'status', 'acceptedBy', 'createdAt', 'updatedAt'
+        ])
+        && data.activityId is string && data.activityId.size() >= 1 && data.activityId.size() <= 128
+        && data.createdBy is string
+        && data.type in ['explore', 'share', 'ask', 'challenge']
+        && data.topic is string && data.topic.size() >= 1 && data.topic.size() <= 120
+        && data.status in ['invited', 'active', 'declined', 'cancelled', 'stopped']
+        && data.acceptedBy is list
+        && data.acceptedBy.size() >= 1 && data.acceptedBy.size() <= 2
+        && data.createdAt is timestamp && data.updatedAt is timestamp;
+    }
+    match /matchRequests/{matchId}/activities/{activityId} {
+      allow get: if activityId == 'current' && isTester() && isAcceptedMatchParticipant(matchId);
+      allow list: if false;
+      allow create: if activityId == 'current'
+        && isTester() && isAcceptedMatchParticipant(matchId)
+        && validActivity(request.resource.data)
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.status == 'invited'
+        && request.resource.data.acceptedBy == [request.auth.uid]
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+      allow update: if activityId == 'current'
+        && isTester() && isAcceptedMatchParticipant(matchId)
+        && validActivity(request.resource.data)
+        && request.resource.data.updatedAt == request.time
+        && (
+          // Start another activity only after the previous one is closed.
+          (resource.data.status in ['declined', 'cancelled', 'stopped']
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'activityId', 'createdBy', 'type', 'topic', 'status',
+            'acceptedBy', 'createdAt', 'updatedAt'
+          ])
+
+            && request.resource.data.createdBy == request.auth.uid
+            && request.resource.data.status == 'invited'
+            && request.resource.data.acceptedBy == [request.auth.uid]
+            && request.resource.data.createdAt == request.time)
+          // Only the recipient can accept and activate the invitation.
+          || (resource.data.status == 'invited'
+            && request.auth.uid != resource.data.createdBy
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              'acceptedBy','status','updatedAt'
+            ])
+            && request.resource.data.acceptedBy == [resource.data.createdBy, request.auth.uid]
+            && request.resource.data.status == 'active')
+          // The recipient can decline without ending chat.
+          || (resource.data.status == 'invited'
+            && request.auth.uid != resource.data.createdBy
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','updatedAt'])
+            && request.resource.data.status == 'declined')
+          // The creator can withdraw before the recipient accepts.
+          || (resource.data.status == 'invited'
+            && request.auth.uid == resource.data.createdBy
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','updatedAt'])
+            && request.resource.data.status == 'cancelled')
+          // Either participant can stop an active activity.
+          || (resource.data.status == 'active'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','updatedAt'])
+            && request.resource.data.status == 'stopped')
+        );
+      allow delete: if false;
+    }
+    // Each user can optionally save an activity to their OWN Passport only.
+    // A stable activityId is the document ID: no duplicate entries per activity.
+    // This records a personal experience, never the other person's endorsement.
+    function validPassportEntry(data, entryId) {
+      return data.keys().hasOnly([
+          'activityId', 'matchId', 'type', 'topic', 'partnerDisplayName', 'activityCreatedAt', 'savedAt'
+        ])
+        && data.keys().hasAll([
+          'activityId', 'matchId', 'type', 'topic', 'partnerDisplayName', 'activityCreatedAt', 'savedAt'
+        ])
+        && data.activityId is string
+        && data.activityId.size() >= 1 && data.activityId.size() <= 128
+        && entryId == data.activityId
+        && data.matchId is string && data.matchId.size() >= 1 && data.matchId.size() <= 128
+        && data.type in ['explore', 'share', 'ask', 'challenge']
+        && data.topic is string && data.topic.size() >= 1 && data.topic.size() <= 120
+        && data.partnerDisplayName is string
+        && data.partnerDisplayName.size() >= 2 && data.partnerDisplayName.size() <= 40
+        && data.activityCreatedAt is timestamp
+        && data.savedAt == request.time;
+    }
+    function verifiedPassportSource(data, uid) {
+      let matchPath = /databases/$(database)/documents/matchRequests/$(data.matchId);
+      let activityPath = /databases/$(database)/documents/matchRequests/$(data.matchId)/activities/current;
+      return exists(matchPath) && exists(activityPath)
+        && get(matchPath).data.status == 'accepted'
+        && (get(matchPath).data.from == uid || get(matchPath).data.to == uid)
+        && get(matchPath).data.acceptedBy is list
+        && get(matchPath).data.acceptedBy.hasAll([
+          get(matchPath).data.from, get(matchPath).data.to
+        ])
+        && data.partnerDisplayName == (
+          get(matchPath).data.from == uid
+            ? get(matchPath).data.toDisplayName
+            : get(matchPath).data.fromDisplayName
+        )
+        && get(activityPath).data.status in ['active', 'stopped']
+        && get(activityPath).data.acceptedBy is list
+        && get(activityPath).data.acceptedBy.hasAll([
+          get(matchPath).data.from, get(matchPath).data.to
+        ])
+        && get(activityPath).data.activityId == data.activityId
+        && get(activityPath).data.createdAt == data.activityCreatedAt
+        && get(activityPath).data.type == data.type
+        && get(activityPath).data.topic == data.topic;
+    }
+    match /users/{uid}/passportEntries/{entryId} {
+      allow get: if isOwner(uid);
+      allow list: if isOwner(uid);
+      allow create: if isOwner(uid) && isTester()
+        && validPassportEntry(request.resource.data, entryId)
+        && verifiedPassportSource(request.resource.data, uid);
+      allow update: if false;
+      // Owners can delete a mistaken entry at any time, even after the match ends.
+      allow delete: if isOwner(uid);
+    }
+    // Ratings and all other collections remain closed.
+    match /{document=**} { allow read, write: if false; }
+  }
+}
