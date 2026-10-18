@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import './App.css';
 import { canSaveActivity, recordSavedActivity } from './activityLogic.js';
+import SkillCall from "./components/SkillCall";
 
 const CATEGORIES = [
   { id: 'Languages', label: 'Languages', Icon: Languages },
@@ -88,6 +89,8 @@ function Stars({ value, small = false }) {
 
 export default function App() {
   const [page, setPage] = useState('home');
+  const [inCall, setInCall] = useState(false);
+  const [livekitToken, setLivekitToken] = useState(null);
   const [mobileNav, setMobileNav] = useState(false);
   const [mode, setMode] = useState('meet');
   const [categories, setCategories] = useState(['Languages', 'Gaming']);
@@ -319,6 +322,20 @@ export default function App() {
         </div>
         <div className="mobile-chat-switch"><button className={mobileChatTab === 'chat' ? 'selected' : ''} onClick={() => setMobileChatTab('chat')}><MessageCircle size={16}/> Chat</button><button className={mobileChatTab === 'lesson' ? 'selected' : ''} onClick={() => setMobileChatTab('lesson')}><Sparkles size={16}/> Activities</button></div>
       </section>}
+      
+      {page === 'chat' && inCall && livekitToken && (
+        <section className="wrap">
+          <SkillCall
+            token={livekitToken}
+            serverUrl={import.meta.env.VITE_LIVEKIT_URL}
+            voiceOnly={false}
+            onLeave={() => {
+              setInCall(false);
+              setLivekitToken(null);
+            }}
+          />
+        </section>
+      )}
 
       {page === 'review' && match && <section className="review-page wrap narrow-flow"><div className="backline"><button className="back-button" onClick={() => navigate('chat')}><ArrowLeft size={17}/> Back to conversation</button></div><div className="review-panel"><div className="success-circle"><Check size={30}/></div><h1>Optional feedback</h1><p>Want to rate the help you received from {match.name}? You can skip this entirely.</p>{activityType === 'ask' && !reviewSubmitted ? <><div className="rate-stars" aria-label="Choose a rating">{[1, 2, 3, 4, 5].map(n => <button key={n} aria-label={`${n} stars`} onClick={() => setRating(n)}><Star size={36} fill={n <= rating ? '#f7b84b' : 'none'} color={n <= rating ? '#f7b84b' : '#c7ced9'}/></button>)}</div><label className="sr-only" htmlFor="review-text">Optional review</label><textarea id="review-text" rows={4} maxLength={300} value={review} onChange={e => setReview(e.target.value)} placeholder="Leave a short review (optional)..."/><button className="btn btn-primary full" disabled={!rating} onClick={submitReview}>Submit review</button></> : <StageTag kind="green"><Check size={15}/> {reviewSubmitted ? 'Review saved locally' : 'Contribution recorded'}</StageTag>}<div className="review-passport"><BookOpen size={21}/><div><strong>Experience saved</strong><span>Feedback is not needed to keep it in your Passport.</span></div></div><button className="btn btn-primary full" onClick={() => { stopActivity(); navigate('chat'); }}><MessageCircle size={17}/> Skip feedback · Return to chat</button><button className="btn btn-outline full" onClick={leaveChat}><LogOut size={16}/> Leave conversation</button><button className="btn btn-subtle full" onClick={() => navigate('passport')}>Open Skill Passport <ArrowRight size={18}/></button></div></section>}
 
