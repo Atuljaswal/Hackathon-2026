@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import './chat.css'
+import '../chat.css'
 
 function describeError(err) {
   switch (err?.name) {
