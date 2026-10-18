@@ -13,6 +13,9 @@ service cloud.firestore {
       return exists(/databases/$(database)/documents/approvedTesters/$(uid));
     }
     function lobbyPath(uid) { return /databases/$(database)/documents/lobby/$(uid); }
+    function savedDisplayName(uid) {
+      return get(/databases/$(database)/documents/users/$(uid)).data.displayName;
+    }
     function ownsCategory(uid, category) {
       return category in get(/databases/$(database)/documents/users/$(uid)).data.categories;
     }
@@ -51,8 +54,11 @@ service cloud.firestore {
     }
     function validLobby(data, uid) {
       return data.keys().hasAll(['uid','category','status','updatedAt'])
-        && data.keys().hasOnly(['uid','category','status','updatedAt','matchId'])
-        && data.uid == uid && data.category is string
+        && data.keys().hasOnly(['uid','category','status','updatedAt','matchId','displayName'])
+        && data.uid == uid
+        && (!('displayName' in data) || (data.displayName is string
+          && data.displayName.size() >= 2 && data.displayName.size() <= 40))
+        && data.category is string
         && data.category.size() >= 2 && data.category.size() <= 40
         && data.status in ['waiting', 'busy']
         && (data.status == 'waiting' && !('matchId' in data)
@@ -96,18 +102,25 @@ service cloud.firestore {
       allow get, list: if isTester();
       allow create: if isTester() && isOwner(uid)
         && validLobby(request.resource.data, uid)
-        && request.resource.data.status == 'waiting';
+        && request.resource.data.status == 'waiting'
+        && request.resource.data.displayName == savedDisplayName(uid);
       // Users own their own queue; a matcher can reserve a partner only when
       // creating a pending proposal, and a matched peer can return the other
       // to waiting only when ending/expiring the linked proposal.
       allow update: if isTester()
         && validLobby(request.resource.data, uid)
         && request.resource.data.category == resource.data.category
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','updatedAt','matchId'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','updatedAt','matchId','displayName'])
         && (
-          isOwner(uid)
-          || (!isOwner(uid) && reservingPartner(uid))
+          (isOwner(uid) && (
+            !request.resource.data.diff(resource.data).affectedKeys().hasAny(['displayName'])
+            || request.resource.data.displayName == savedDisplayName(uid)
+          ))
           || (!isOwner(uid)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','updatedAt','matchId'])
+            && reservingPartner(uid))
+          || (!isOwner(uid)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','updatedAt','matchId'])
             && resource.data.status == 'busy'
             && request.resource.data.status == 'waiting'
             && !('matchId' in request.resource.data)
@@ -127,15 +140,23 @@ service cloud.firestore {
       );
       allow create: if isTester()
         && request.resource.data.keys().hasAll([
-          'from','to','category','status','acceptedBy','createdAt','updatedAt'
+          'from','to','fromDisplayName','toDisplayName','category','status','acceptedBy','createdAt','updatedAt'
         ])
         && request.resource.data.keys().hasOnly([
-          'from','to','category','status','acceptedBy','createdAt','updatedAt'
+          'from','to','fromDisplayName','toDisplayName','category','status','acceptedBy','createdAt','updatedAt'
         ])
         && request.resource.data.from == request.auth.uid
         && request.resource.data.to is string
         && request.resource.data.from != request.resource.data.to
         && approved(request.resource.data.to)
+        && request.resource.data.fromDisplayName is string
+        && request.resource.data.toDisplayName is string
+        && request.resource.data.fromDisplayName.size() >= 2
+        && request.resource.data.fromDisplayName.size() <= 40
+        && request.resource.data.toDisplayName.size() >= 2
+        && request.resource.data.toDisplayName.size() <= 40
+        && request.resource.data.fromDisplayName == get(lobbyPath(request.resource.data.from)).data.displayName
+        && request.resource.data.toDisplayName == get(lobbyPath(request.resource.data.to)).data.displayName
         && request.resource.data.category is string
         && request.resource.data.category.size() >= 2
         && request.resource.data.category.size() <= 40
@@ -199,7 +220,35 @@ service cloud.firestore {
         );
       allow delete: if false;
     }
-    // Chat, ratings, activities and other collections remain closed.
+    // Private text chat for accepted two-sided matches only.
+    // Read access ends when the match is no longer accepted.
+    function isAcceptedMatchParticipant(matchId) {
+      let matchPath = /databases/$(database)/documents/matchRequests/$(matchId);
+      let linked = get(matchPath).data;
+      return exists(matchPath)
+        && linked.status == 'accepted'
+        && linked.acceptedBy is list
+        && linked.acceptedBy.hasAll([linked.from, linked.to])
+        && (linked.from == request.auth.uid || linked.to == request.auth.uid);
+    }
+    match /matchRequests/{matchId}/messages/{messageId} {
+      allow get: if isTester() && isAcceptedMatchParticipant(matchId);
+      // All chat readers must use a bounded query (100 latest messages).
+      allow list: if isTester()
+        && request.query.limit != null && request.query.limit <= 100
+        && isAcceptedMatchParticipant(matchId);
+      allow create: if isTester()
+        && isAcceptedMatchParticipant(matchId)
+        && request.resource.data.keys().hasOnly(['senderId', 'text', 'createdAt'])
+        && request.resource.data.keys().hasAll(['senderId', 'text', 'createdAt'])
+        && request.resource.data.senderId == request.auth.uid
+        && request.resource.data.text is string
+        && request.resource.data.text.size() >= 1
+        && request.resource.data.text.size() <= 1000
+        && request.resource.data.createdAt == request.time;
+      allow update, delete: if false;
+    }
+    // Ratings, activities and all other collections remain closed.
     match /{document=**} { allow read, write: if false; }
   }
 }

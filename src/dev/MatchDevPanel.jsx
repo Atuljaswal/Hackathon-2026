@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { auth } from '../firebase.js';
+import ChatDevPanel from './ChatDevPanel.jsx';
 import { getMyProfile } from '../services/userService.js';
 import { startAutomaticMatching } from '../services/autoMatchService.js';
 import {
@@ -19,6 +20,7 @@ export default function MatchDevPanel() {
   const [notice, setNotice] = useState('Ready');
   const [busy, setBusy] = useState(false);
   const [categories, setCategories] = useState([]);
+  const [myDisplayName, setMyDisplayName] = useState('You');
   const [now, setNow] = useState(Date.now());
   const uid = auth.currentUser?.uid;
 
@@ -26,6 +28,7 @@ export default function MatchDevPanel() {
     getMyProfile().then(p => {
       const items = p?.categories || [];
       setCategories(items);
+      setMyDisplayName(p?.displayName || auth.currentUser?.displayName || 'You');
       if (items.length) setCategory(items[0]);
     }).catch(err => setNotice(err.message));
     const fail = err => setNotice(`Listener failed: ${err.message}`);
@@ -56,6 +59,8 @@ export default function MatchDevPanel() {
   const hasAccepted = acceptedBy.includes(uid);
   const peer = pending ? (pending.from === uid ? pending.to : pending.from) : null;
   const peerAccepted = peer ? acceptedBy.includes(peer) : false;
+  const partnerName = match => !match ? 'Matched member' :
+    (match.from === uid ? match.toDisplayName : match.fromDisplayName) || 'Matched member';
   const createdMs = pending?.createdAt?.toMillis?.();
   const secondsLeft = createdMs === undefined ? null : Math.max(0, Math.ceil(
     (createdMs + PROPOSAL_DURATION_MS - now) / 1000,
@@ -86,7 +91,7 @@ export default function MatchDevPanel() {
 
   return <section style={{ border: '1px solid #bbb', borderRadius: 12, padding: 18, marginTop: 24 }}>
     <h2>Automatic matching backend test (approved testers only)</h2>
-    <p><b>UID:</b> {uid} &nbsp; <b>Status:</b> {notice}</p>
+    <p><b>Signed in as:</b> {myDisplayName} &nbsp; <b>Status:</b> {notice}</p>
     <label>Interest: <select value={category} onChange={e => setCategory(e.target.value)}>
       {categories.length
         ? categories.map(c => <option key={c} value={c}>{c}</option>)
@@ -104,7 +109,7 @@ export default function MatchDevPanel() {
     <h3>Match proposal — two-person confirmation</h3>
     {!pending && !activeMatch && <p>No active proposal. Join the queue and wait for a compatible tester.</p>}
     {pending && <div style={{ border: '1px solid #9daec2', borderRadius: 10, padding: 16, background: '#f4f8fc' }}>
-      <p><b>Interest:</b> {pending.category} &nbsp; <b>Partner:</b> <code>{peer?.slice(0, 10)}…</code></p>
+      <p><b>Interest:</b> {pending.category} &nbsp; <b>Partner:</b> {partnerName(pending)}</p>
       <p><b>WFC (Waiting for Connection)</b></p>
       <p style={{ fontSize: 28, margin: '8px 0', fontVariantNumeric: 'tabular-nums' }}>
         {secondsLeft === null ? 'Syncing timer…' : `${String(Math.floor(secondsLeft / 60)).padStart(2, '0')}:${String(secondsLeft % 60).padStart(2, '0')}`}
@@ -124,11 +129,11 @@ export default function MatchDevPanel() {
     <h3>Active match (both accepted)</h3>
     {!activeMatch && <p>Waiting for both people to accept.</p>}
     {activeMatch && <div>
-      <code>{activeMatch.id.slice(0, 10)}…</code> — <b>Both accepted ✓</b> ({activeMatch.category})
-      <p>You're connected! Real-time text chat is the next separate feature.</p>
+      <p><b>Connected with:</b> {partnerName(activeMatch)} — <b>Both accepted ✓</b> ({activeMatch.category})</p>
+      <ChatDevPanel matchId={activeMatch.id} peerName={partnerName(activeMatch)} />
       <button style={button} disabled={busy} onClick={() => run('Leave match', () => endMatch(activeMatch.id))}>Leave</button>
       <button style={button} disabled={busy} onClick={() => run('Next person', () => nextPerson(activeMatch.id, activeMatch.category))}>Next person</button>
     </div>}
-    <p style={{ fontSize: 12 }}>Approved-testers-only development page. Actual chat, age-appropriate matching, blocking and reporting still need implementation before public use.</p>
+    <p style={{ fontSize: 12 }}>Approved-testers-only development page. Age-appropriate matching, blocking, reporting and moderation are still needed before public use.</p>
   </section>;
 }
