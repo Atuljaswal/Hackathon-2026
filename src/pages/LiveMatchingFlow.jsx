@@ -11,7 +11,7 @@ import {
 import { sendMessage, watchMessages } from '../services/chatService.js';
 
 // This flow displays real Firebase matches; the old demo components are unchanged.
-export default function LiveMatchingFlow({ page, categories, chosenMode, navigate, onQueueChange }) {
+export default function LiveMatchingFlow({ page, categories, chosenMode, navigate, onQueueChange, isVisible = true }) {
   const [queue, setQueue] = useState(undefined);
   const [incoming, setIncoming] = useState([]);
   const [outgoing, setOutgoing] = useState([]);
@@ -130,8 +130,9 @@ export default function LiveMatchingFlow({ page, categories, chosenMode, navigat
     };
     return <>
       {error && <p className="auth-error live-chat-error" role="alert">{error}</p>}
-      <ChatPage live match={peer} currentUid={uid} busy={busy} messages={messages}
+      <ChatPage live match={peer} matchId={accepted.id} currentUid={uid} busy={busy} messages={messages}
         draft={draft} setDraft={setDraft} sendMessage={submitMessage}
+        callVisible={isVisible}
         leaveChat={leaveChat} nextPerson={skip}/>
     </>;
   }
