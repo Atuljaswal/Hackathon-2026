@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { auth } from '../firebase.js';
+import ChatDevPanel from './ChatDevPanel.jsx';
 import { getMyProfile } from '../services/userService.js';
 import { startAutomaticMatching } from '../services/autoMatchService.js';
 import {
@@ -125,7 +126,7 @@ export default function MatchDevPanel() {
     {!activeMatch && <p>Waiting for both people to accept.</p>}
     {activeMatch && <div>
       <code>{activeMatch.id.slice(0, 10)}…</code> — <b>Both accepted ✓</b> ({activeMatch.category})
-      <p>You're connected! Real-time text chat is the next separate feature.</p>
+      <ChatDevPanel matchId={activeMatch.id} />
       <button style={button} disabled={busy} onClick={() => run('Leave match', () => endMatch(activeMatch.id))}>Leave</button>
       <button style={button} disabled={busy} onClick={() => run('Next person', () => nextPerson(activeMatch.id, activeMatch.category))}>Next person</button>
     </div>}
