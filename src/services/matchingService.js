@@ -31,7 +31,13 @@ export async function joinQueue(category) {
   // Keep Join Queue atomic with automatic invitations. A delayed join must
   // never overwrite a busy lobby or an accepted match.
   await runTransaction(db, async tx => {
-    const current = await tx.get(lobbyRef(uid));
+    const [current, profile] = await Promise.all([
+      tx.get(lobbyRef(uid)), tx.get(doc(db, 'users', uid)),
+    ]);
+    const displayName = profile.data()?.displayName;
+    if (!profile.exists() || typeof displayName !== 'string' || !displayName.trim()) {
+      throw new Error('Save a display name to your profile before joining the queue.');
+    }
     if (current.exists() && current.data().status === 'busy') {
       throw new Error('Leave your current invitation or match before rejoining the queue.');
     }
@@ -39,7 +45,7 @@ export async function joinQueue(category) {
       throw new Error('Leave the existing queue before switching categories.');
     }
     tx.set(lobbyRef(uid), {
-      uid, category, status: 'waiting', updatedAt: serverTimestamp(),
+      uid, category, displayName, status: 'waiting', updatedAt: serverTimestamp(),
     });
   });
 }
@@ -91,11 +97,18 @@ export async function requestMatch(targetUid, category) {
         mine.data().category !== category || theirs.data().category !== category) {
       throw new Error('This participant is no longer available. Try another match.');
     }
+    // Use only server-validated lobby names. Private profile documents remain private.
+    const fromDisplayName = mine.data().displayName;
+    const toDisplayName = theirs.data().displayName;
+    if (!fromDisplayName || !toDisplayName) {
+      throw new Error('A participant must rejoin the queue to update their display name.');
+    }
     // Reserve both accounts: nobody receives overlapping invitations.
     tx.update(lobbyRef(uid), { status: 'busy', matchId: request.id, updatedAt: serverTimestamp() });
     tx.update(lobbyRef(targetUid), { status: 'busy', matchId: request.id, updatedAt: serverTimestamp() });
     tx.set(request, {
-      from: uid, to: targetUid, category, status: 'pending', acceptedBy: [],
+      from: uid, to: targetUid, fromDisplayName, toDisplayName,
+      category, status: 'pending', acceptedBy: [],
       createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
     });
   });
