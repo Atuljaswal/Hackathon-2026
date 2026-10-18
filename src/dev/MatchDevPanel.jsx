@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { auth } from '../firebase.js';
 import ChatDevPanel from './ChatDevPanel.jsx';
+import ActivityDevPanel from './ActivityDevPanel.jsx';
 import { getMyProfile } from '../services/userService.js';
 import { startAutomaticMatching } from '../services/autoMatchService.js';
 import {
@@ -131,6 +132,7 @@ export default function MatchDevPanel() {
     {activeMatch && <div>
       <p><b>Connected with:</b> {partnerName(activeMatch)} — <b>Both accepted ✓</b> ({activeMatch.category})</p>
       <ChatDevPanel matchId={activeMatch.id} peerName={partnerName(activeMatch)} />
+      <ActivityDevPanel matchId={activeMatch.id} peerName={partnerName(activeMatch)} />
       <button style={button} disabled={busy} onClick={() => run('Leave match', () => endMatch(activeMatch.id))}>Leave</button>
       <button style={button} disabled={busy} onClick={() => run('Next person', () => nextPerson(activeMatch.id, activeMatch.category))}>Next person</button>
     </div>}
