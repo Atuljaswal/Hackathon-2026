@@ -4,6 +4,8 @@ import { Avatar, StageTag } from '../components/Shared.jsx';
 import { ACTIVITIES, ACTIVITY_PROMPTS } from '../data/demoData.js';
 import CameraView from '../components/Camera.jsx'; // Preserve your existing Camera.jsx file.
 import SkillCall from '../components/SkillCall.jsx';
+import LiveActivitiesPanel from './LiveActivitiesPanel.jsx';
+import MatchCallDevPanel from '../components/MatchCallDevPanel.jsx';
 
 function CameraPlaceholder() {
   const videoRef = useRef(null)
@@ -97,9 +99,9 @@ function ChatTabPanel({ id, active, children }) {
   );
 }
 
-export default function ChatPage({ match, mobileChatTab = 'chat', leaveChat, nextPerson, setReportOpen, messages, simulateReply, draft, setDraft, sendMessage, lessonState, activityType, selectActivity, activityTopic, setActivityTopic, activityDefaults, inviteLesson, stopActivity, confirmInviteB, lessonChecks, setLessonChecks, myConfirmation, setMyConfirmation, peerConfirmation, setPeerConfirmation, canSave, completeLesson, isTeachingActivity, teacherIsMe, navigate, sessionGoal, setMobileChatTab, live = false, currentUid, busy = false, inCall, livekitToken, startCall, endCall, serverUrl }) {
-  // Real Firebase chat uses the same page styling. Camera/activities remain
-  // inactive placeholders until their separate LiveKit/Firestore UI integration.
+export default function ChatPage({ match, mobileChatTab = 'chat', leaveChat, nextPerson, setReportOpen, messages, simulateReply, draft, setDraft, sendMessage, lessonState, activityType, selectActivity, activityTopic, setActivityTopic, activityDefaults, inviteLesson, stopActivity, confirmInviteB, lessonChecks, setLessonChecks, myConfirmation, setMyConfirmation, peerConfirmation, setPeerConfirmation, canSave, completeLesson, isTeachingActivity, teacherIsMe, navigate, sessionGoal, setMobileChatTab, live = false, matchId, currentUid, callVisible = true, busy = false, inCall, livekitToken, startCall, endCall, serverUrl }) {
+  const [liveTab, setLiveTab] = useState('chat');
+  // Real Firebase chat and live Firestore activities share the same tab layout.
   if (live) return (
     <section className="chat-page wrap">
       <div className="chat-page-heading">
@@ -110,15 +112,19 @@ export default function ChatPage({ match, mobileChatTab = 'chat', leaveChat, nex
         </div>
       </div>
       <div className="chat-layout">
-        <div className="live-video-stack" aria-label="Video call placeholders">
-          <div className="live-video-panel">Other person's video (coming later)</div>
-          <div className="live-video-panel">Your video (coming later)</div>
+        {/* DEV 1 LiveKit engine + temporary controls. Dev 2 can replace this panel. */}
+        <div className="live-video-stack" aria-label="Live video call">
+          <MatchCallDevPanel
+            key={matchId}
+            matchId={matchId}
+            peerUid={match.id}
+            peerName={match.name}
+            active={callVisible}
+          />
         </div>
         <div className="chat-tabs">
-          <div className="chat-tablist" aria-label="Conversation sections">
-            <span className="chat-tab is-selected"><MessageCircle size={16}/> Chat</span>
-            <span className="chat-tab"><Sparkles size={16}/> Activities (next step)</span>
-          </div>
+          <ChatTabs active={liveTab} onChange={setLiveTab}/>
+          <ChatTabPanel id="chat" active={liveTab}>
           <div className="chat-column">
             <div className="chat-person-bar">
               <div className="person-identity"><Avatar person={match} online/>
@@ -148,6 +154,10 @@ export default function ChatPage({ match, mobileChatTab = 'chat', leaveChat, nex
               </form>
             </div>
           </div>
+          </ChatTabPanel>
+          <ChatTabPanel id="lesson" active={liveTab}>
+            <LiveActivitiesPanel matchId={matchId} peerName={match.name} onBackToChat={() => setLiveTab('chat')}/>
+          </ChatTabPanel>
         </div>
       </div>
     </section>

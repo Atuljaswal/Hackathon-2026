@@ -329,7 +329,7 @@ export default function App() {
           count={new Set([...categories, ...goal.split(',').map(v => v.trim().toLowerCase()).filter(Boolean)]).size} />}
       {authUser && (activeSession || viewingSession) && (
         <div className="persistent-session" hidden={!viewingSession}>
-          <LiveMatchingFlow key={authUser.uid} page={sessionPage} chosenMode={chosenMode}
+          <LiveMatchingFlow key={authUser.uid} page={sessionPage} isVisible={viewingSession} chosenMode={chosenMode}
             categories={[...categories, ...goal.split(',').map(v => v.trim()).filter(Boolean)]}
             navigate={navigateWithinSession}
             onQueueChange={queue => setSessionQueueState({ uid: authUser.uid, queue })} />
