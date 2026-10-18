@@ -31,4 +31,4 @@ serviceAccountKey.json
 
 #livekit
 livekit-server/.env
-livekit-server/serviceAccountKey.json
+livekit-server/serviceAccountKey.jsonlivekit-server/serviceAccountKey*.json

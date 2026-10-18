@@ -1,5 +1,6 @@
 import { doc, getDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase.js';
+import { normalizeCategories } from './categoryUtils.js';
 
 export async function getMyProfile() {
   const user = auth.currentUser;
@@ -26,4 +27,16 @@ export async function updateMySkills({ categories, canTeach, wantsToLearn }) {
     wantsToLearn,
     updatedAt: serverTimestamp(),
   });
+}
+
+/** Save the entire interests selection without overwriting skills or other profile data. */
+export async function updateMyCategories(categories) {
+  const user = auth.currentUser;
+  if (!user) throw new Error('Please log in first.');
+  const clean = normalizeCategories(categories);
+  await updateDoc(doc(db, 'users', user.uid), {
+    categories: clean,
+    updatedAt: serverTimestamp(),
+  });
+  return clean;
 }

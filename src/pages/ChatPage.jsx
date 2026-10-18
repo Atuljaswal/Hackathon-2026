@@ -99,7 +99,61 @@ function ChatTabPanel({ id, active, children }) {
   );
 }
 
-export default function ChatPage({ match, mobileChatTab = 'chat', leaveChat, nextPerson, setReportOpen, messages, simulateReply, draft, setDraft, sendMessage, lessonState, activityType, selectActivity, activityTopic, setActivityTopic, activityDefaults, inviteLesson, stopActivity, confirmInviteB, lessonChecks, setLessonChecks, myConfirmation, setMyConfirmation, peerConfirmation, setPeerConfirmation, canSave, completeLesson, isTeachingActivity, teacherIsMe, navigate, sessionGoal, setMobileChatTab }) {
+export default function ChatPage({ match, mobileChatTab = 'chat', leaveChat, nextPerson, setReportOpen, messages, simulateReply, draft, setDraft, sendMessage, lessonState, activityType, selectActivity, activityTopic, setActivityTopic, activityDefaults, inviteLesson, stopActivity, confirmInviteB, lessonChecks, setLessonChecks, myConfirmation, setMyConfirmation, peerConfirmation, setPeerConfirmation, canSave, completeLesson, isTeachingActivity, teacherIsMe, navigate, sessionGoal, setMobileChatTab, live = false, currentUid, busy = false }) {
+  // Real Firebase chat uses the same page styling. Camera/activities remain
+  // inactive placeholders until their separate LiveKit/Firestore UI integration.
+  if (live) return (
+    <section className="chat-page wrap">
+      <div className="chat-page-heading">
+        <button className="back-button" disabled={busy} onClick={leaveChat}><ArrowLeft size={17}/> Leave chat</button>
+        <div className="chat-heading-actions">
+          <StageTag kind="green"><span className="little-dot"/> Real conversation</StageTag>
+          <button className="btn btn-outline chat-exit-button" disabled={busy} onClick={leaveChat}><LogOut size={16}/> Leave conversation</button>
+        </div>
+      </div>
+      <div className="chat-layout">
+        <div className="live-video-stack" aria-label="Video call placeholders">
+          <div className="live-video-panel">Other person's video (coming later)</div>
+          <div className="live-video-panel">Your video (coming later)</div>
+        </div>
+        <div className="chat-tabs">
+          <div className="chat-tablist" aria-label="Conversation sections">
+            <span className="chat-tab is-selected"><MessageCircle size={16}/> Chat</span>
+            <span className="chat-tab"><Sparkles size={16}/> Activities (next step)</span>
+          </div>
+          <div className="chat-column">
+            <div className="chat-person-bar">
+              <div className="person-identity"><Avatar person={match} online/>
+                <div><h2>{match.name}</h2><p>{match.categories.join(' · ')}</p></div>
+              </div>
+              <div className="chat-toolbar">
+                <button disabled={busy} title="Find another person" onClick={nextPerson}><SkipForward size={18}/><span>Next person</span></button>
+              </div>
+            </div>
+            <div className="chat-messages" aria-live="polite">
+              <div className="chat-disclaimer"><ShieldCheck size={15}/> Only you and your accepted match can read these Firestore messages.</div>
+              {messages.length ? messages.map(message => {
+                const mine = message.senderId === currentUid;
+                return <div key={message.id} className={`message-line ${mine ? 'message-line--me' : ''}`}>
+                  {!mine && <Avatar person={match} size="xs"/>}
+                  <div className={`message-bubble ${mine ? 'message-bubble--me' : ''}`}>
+                    <p>{message.text}</p><span>{mine ? 'You' : match.name}</span>
+                  </div>
+                </div>;
+              }) : <p className="small-note">No messages yet. Say hello when you're ready.</p>}
+            </div>
+            <div className="chat-bottom">
+              <form className="message-form" onSubmit={sendMessage}>
+                <input aria-label="Message" value={draft} onChange={e => setDraft(e.target.value)}
+                  placeholder="Type a message..." maxLength={1000}/>
+                <button type="submit" aria-label="Send message" disabled={busy || !draft.trim()}><Send size={19}/></button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
   return (
     <section className="chat-page wrap">
             <div className="chat-page-heading"><button className="back-button" onClick={leaveChat}><ArrowLeft size={17}/> Leave chat</button><div className="chat-heading-actions"><StageTag kind="green"><span className="little-dot"/> Simulated conversation</StageTag><button className="btn btn-outline chat-exit-button" onClick={leaveChat}><LogOut size={16}/> Leave conversation</button></div></div>

@@ -4,9 +4,10 @@ import {
   refreshQueue, requestMatch, watchIncomingRequests, watchMyQueue, watchOutgoingRequests,
 } from './matchingService.js';
 import { chooseAutomaticCandidate } from './autoMatchSelection.js';
+import { sharedCategories } from './categoryUtils.js';
 
 /**
- * Drive automatic proposal creation while this approved tester's page is open.
+ * Drive automatic proposal creation while this signed-in user's page is open.
  * Joining the queue opts in to proposals. Both participants must now Accept
  * before an active match is created. No one is put in chat automatically. Stop the listener when the component unmounts/logs out.
  *
@@ -47,10 +48,10 @@ export function startAutomaticMatching(onStatus, onError) {
         m.updatedAt?.toMillis?.() >= Date.now() - RECENT_PARTNER_COOLDOWN_MS)
       .map(m => m.to));
     const person = chooseAutomaticCandidate(
-      candidates.filter(p => !recentPartners.has(p.uid)), uid, queue.category,
+      candidates.filter(p => !recentPartners.has(p.uid)), uid, queue.categories,
     );
     if (!person) {
-      status('Waiting for a compatible tester in this interest queue...');
+      status('Waiting for someone who shares at least one interest...');
       return;
     }
     if (Date.now() - lastAttempt < ATTEMPT_GAP_MS) return;
@@ -58,7 +59,9 @@ export function startAutomaticMatching(onStatus, onError) {
     inFlight = true;
     status('Found a candidate; proposing a random match...');
     try {
-      await requestMatch(person.uid, queue.category);
+      const common = sharedCategories(queue.categories, person.categories);
+      if (!common.length) return;
+      await requestMatch(person.uid, common[0]);
       status('Random match proposed to both people. Waiting for two acceptances.');
     } catch (err) {
       // The other participant may have already matched or left. Retry later.
@@ -74,16 +77,16 @@ export function startAutomaticMatching(onStatus, onError) {
 
   function updateQueue(next) {
     queue = next;
-    const category = queue?.status === 'waiting' ? queue.category : null;
-    if (category !== subscribingCategory) {
+    const categories = queue?.status === 'waiting' ? queue.categories : null;
+    const categoryKey = categories?.join('\u0000') || null;
+    if (categoryKey !== subscribingCategory) {
       stopCandidates();
       stopCandidates = () => {};
       candidates = [];
-      subscribingCategory = category;
-      if (category) {
-        // Single-field category filter avoids requiring a composite index.
+      subscribingCategory = categoryKey;
+      if (categories?.length) {
         stopCandidates = onSnapshot(
-          query(collection(db, 'lobby'), where('category', '==', category), limit(50)),
+          query(collection(db, 'lobby'), where('categories', 'array-contains-any', categories), limit(50)),
           snapshot => {
             candidates = snapshot.docs.map(d => d.data());
             void attempt();
@@ -107,7 +110,7 @@ export function startAutomaticMatching(onStatus, onError) {
   const retry = setInterval(() => { void attempt(); }, 5000);
   const heartbeat = setInterval(async () => {
     if (stopped || inFlight || queue?.status !== 'waiting') return;
-    try { await refreshQueue(queue.category); }
+    try { await refreshQueue(queue.categories); }
     catch (err) { if (!stopped) fail(err); }
   }, 60000);
 
