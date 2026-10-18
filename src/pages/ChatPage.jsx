@@ -1,45 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { ArrowLeft, ArrowRight, BookOpen, Check, CheckCircle2, Flag, MessageCircle, RotateCcw, Send, ShieldCheck, Sparkles, LogOut, SkipForward } from 'lucide-react';
 import { Avatar, StageTag } from '../components/Shared.jsx';
 import { ACTIVITIES, ACTIVITY_PROMPTS } from '../data/demoData.js';
 import CameraView from '../components/Camera.jsx'; // Preserve your existing Camera.jsx file.
-
-function CameraPlaceholder() {
-  const videoRef = useRef(null)
-  const photoRef = useRef(null)
-
-  const [hasPhoto, setHasPhoto] = useState(false)
-
-  const getVideo = () => {
-    navigator.mediaDevices.getUserMedia({
-      video: {width: 1920, height: 1080}
-    })
-    .then(stream => {
-      let video = videoRef.current;
-      video.srcObject = stream;
-      video.play();
-    })
-    .catch(err => {
-      console.error(err);
-    })
-  }
-
-  useEffect(() => {
-    getVideo();
-  }, [videoRef]);
-
-  return (
-  <div>
-    <div className="camera">
-      <video ref={videoRef}></video>
-    </div>
-    {/* <div className={'result' + (hasPhoto ? 'hasPhoto' : '')}>
-      <canvas ref={photoRef}></canvas>
-      <button>close</button>
-    </div> */}
-  </div>
-  )
-}
+import MediaControls from '../components/MediaControls.jsx';
 
 const CHAT_TABS = [
   { id: 'chat', label: 'Chat', Icon: MessageCircle },
@@ -99,14 +63,24 @@ function ChatTabPanel({ id, active, children }) {
   );
 }
 
-export default function ChatPage({ match, mobileChatTab = 'chat', leaveChat, nextPerson, setReportOpen, messages, simulateReply, draft, setDraft, sendMessage, lessonState, activityType, selectActivity, activityTopic, setActivityTopic, activityDefaults, inviteLesson, stopActivity, confirmInviteB, lessonChecks, setLessonChecks, myConfirmation, setMyConfirmation, peerConfirmation, setPeerConfirmation, canSave, completeLesson, isTeachingActivity, teacherIsMe, navigate, sessionGoal, setMobileChatTab }) {
+export default function ChatPage({ match, mobileChatTab = 'chat', leaveChat, nextPerson, setReportOpen, messages, simulateReply, draft, setDraft, sendMessage, lessonState, activityType, selectActivity, activityTopic, setActivityTopic, activityDefaults, inviteLesson, stopActivity, confirmInviteB, lessonChecks, setLessonChecks, myConfirmation, setMyConfirmation, peerConfirmation, setPeerConfirmation, canSave, completeLesson, isTeachingActivity, teacherIsMe, navigate, sessionGoal, setMobileChatTab, media }) {
+  // Camera and microphone come from App (started on the matching page). If this
+  // page is reached some other way, start them here; devices the user switched off stay off.
+  const { camera, mic } = media;
+  useEffect(() => {
+    camera.autoStart();
+    mic.autoStart();
+  }, [camera.autoStart, mic.autoStart]);
+
   return (
     <section className="chat-page wrap">
             <div className="chat-page-heading"><button className="back-button" onClick={leaveChat}><ArrowLeft size={17}/> Leave chat</button><div className="chat-heading-actions"><StageTag kind="green"><span className="little-dot"/> Simulated conversation</StageTag><button className="btn btn-outline chat-exit-button" onClick={leaveChat}><LogOut size={16}/> Leave conversation</button></div></div>
             <div className="chat-layout">
               <div>
-                <CameraPlaceholder/> {/* other person. */}
-                <CameraView/> {/* self */}
+                {/* Other person: placeholder that shows your own camera until LiveKit is connected. */}
+                <CameraView camera={camera} label={match.name} mirrored={false}/>
+                <CameraView camera={camera}/> {/* self */}
+                <MediaControls media={media}/>
               </div>
 
               <div className="chat-tabs">

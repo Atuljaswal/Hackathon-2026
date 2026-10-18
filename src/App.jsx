@@ -16,6 +16,7 @@ import SkillPassportPage from './pages/SkillPassportPage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import SignUpPage from './pages/SignUpPage.jsx';
 import { logout, subscribeToAuth } from './services/authService.js';
+import { useLocalMedia } from './hooks/useLocalMedia.js';
 
 
 export default function App() {
@@ -47,6 +48,14 @@ export default function App() {
   const progress = demoData.progress;
   const blocked = demoData.blocked;
   const [activity, setActivity] = useState('') // share, getHelp, challenge, other
+
+  // Camera + microphone for the chat page (started there, stopped when the chat is left).
+  const media = useLocalMedia();
+  const { releaseAll: releaseMedia } = media;
+  useEffect(() => {
+    // Turn the camera and microphone off as soon as the user leaves the chat.
+    if (page !== 'chat') releaseMedia();
+  }, [page, releaseMedia]);
 
   useEffect(() => subscribeToAuth(currentUser => {
     setAuthUser(currentUser);
@@ -180,15 +189,18 @@ export default function App() {
           <button className={page === 'home' ? 'nav-active' : ''} onClick={() => navigate('home')}>Home</button>
           <button className={['interests', 'matching', 'chat'].includes(page) ? 'nav-active' : ''} onClick={() => startMode('meet')}>Find a match</button>
           <button className={page === 'passport' ? 'nav-active' : ''} onClick={() => navigate('passport')}>Skill Passport</button>
-          {authReady && (authUser ? (
-            <button onClick={handleLogout}>Log out</button>
-          ) : <>
-            <button className={page === 'login' ? 'nav-active' : ''} onClick={() => navigate('login')}>Log in</button>
-            <button className={page === 'sign in' ? 'nav-active' : ''} onClick={() => navigate('sign in')}>Sign up</button>
-            <button className='logout' onClick={() => logout()}>Log Out</button>
-          </>)}
         </nav>
-        <div className="header-actions"><button className="avatar-button" onClick={() => navigate(authUser ? 'passport' : 'login')} aria-label={authUser ? 'Open your Skill Passport' : 'Log in'}><span className="avatar avatar--xs avatar--blue">{authUser ? (authUser.displayName || authUser.email || 'You').slice(0, 2).toUpperCase() : 'YOU'}</span></button><button className="menu-button" aria-label="Toggle navigation" aria-expanded={mobileNav} onClick={() => setMobileNav(!mobileNav)}><Menu size={22}/></button></div>
+        <div className="header-actions">
+          {authReady && (authUser ?
+            <>
+              <button className="header-btn header-btn--quiet" onClick={handleLogout}>Log out</button>
+              <button className="avatar-button" onClick={() => navigate(authUser ? 'passport' : 'login')} aria-label={authUser ? 'Open your Skill Passport' : 'Log in'}><span className="avatar avatar--xs avatar--blue">{authUser ? (authUser.displayName || authUser.email || 'You').slice(0, 2).toUpperCase() : 'YOU'}</span></button><button className="menu-button" aria-label="Toggle navigation" aria-expanded={mobileNav} onClick={() => setMobileNav(!mobileNav)}><Menu size={22}/></button>
+            </> : <>
+              <button className={`header-btn header-btn--outline${page === 'login' ? ' nav-active' : ''}`} onClick={() => navigate('login')}>Log in</button>
+              <button className={`header-btn header-btn--solid${page === 'sign in' ? ' nav-active' : ''}`} onClick={() => navigate('sign in')}>Sign up</button>
+            </>
+          )}
+        </div>
       </div>
     </header>
 
@@ -201,7 +213,7 @@ export default function App() {
       {page === 'chat' && match && <ChatPage {...{match,mobileChatTab,leaveChat,nextPerson,setReportOpen,messages,simulateReply,draft,setDraft,sendMessage,
           lessonState,activityType,selectActivity,activityTopic,setActivityTopic,activityDefaults,inviteLesson,
           stopActivity,confirmInviteB,lessonChecks,setLessonChecks,myConfirmation,setMyConfirmation,
-          peerConfirmation,setPeerConfirmation,canSave,completeLesson,isTeachingActivity,teacherIsMe,navigate,sessionGoal,setMobileChatTab}} />}
+          peerConfirmation,setPeerConfirmation,canSave,completeLesson,isTeachingActivity,teacherIsMe,navigate,sessionGoal,setMobileChatTab,media}} />}
       {page === 'review' && match && <ReviewPage {...{match,navigate,activityType,reviewSubmitted,rating,setRating,review,setReview,
           submitReview,stopActivity,leaveChat,teacherIsMe,lessonState}} />}
       {page === 'passport' && <SkillPassportPage progress={progress} startMode={startMode} resetDemo={resetDemo} />}
