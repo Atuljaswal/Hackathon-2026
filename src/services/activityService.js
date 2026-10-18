@@ -1,4 +1,4 @@
-import { doc, runTransaction, onSnapshot, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, runTransaction, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../firebase.js';
 
 // Skill Activities are optional invitations inside an already accepted match.
@@ -31,6 +31,8 @@ export async function createActivityInvite(matchId, type, topic) {
   if (cleanTopic.length < 1 || cleanTopic.length > MAX_ACTIVITY_TOPIC_LENGTH) {
     throw new Error(`Enter a topic (1–${MAX_ACTIVITY_TOPIC_LENGTH} characters).`);
   }
+  // New unique activity ID even though the live activity document is reused.
+  const activityId = doc(collection(db, 'matchRequests', matchId, 'activities')).id;
   await runTransaction(db, async tx => {
     const ref = activityRef(matchId);
     const snap = await tx.get(ref);
@@ -39,7 +41,7 @@ export async function createActivityInvite(matchId, type, topic) {
     }
     // Firestore rules separately verify both users belong to an accepted match.
     tx.set(ref, {
-      createdBy: me, type, topic: cleanTopic, status: 'invited',
+      activityId, createdBy: me, type, topic: cleanTopic, status: 'invited',
       acceptedBy: [me], createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
     });
   });

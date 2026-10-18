@@ -252,11 +252,12 @@ service cloud.firestore {
     // Both people decide independently. Stopping an activity never ends chat.
     function validActivity(data) {
       return data.keys().hasOnly([
-          'createdBy', 'type', 'topic', 'status', 'acceptedBy', 'createdAt', 'updatedAt'
+          'activityId', 'createdBy', 'type', 'topic', 'status', 'acceptedBy', 'createdAt', 'updatedAt'
         ])
         && data.keys().hasAll([
-          'createdBy', 'type', 'topic', 'status', 'acceptedBy', 'createdAt', 'updatedAt'
+          'activityId', 'createdBy', 'type', 'topic', 'status', 'acceptedBy', 'createdAt', 'updatedAt'
         ])
+        && data.activityId is string && data.activityId.size() >= 1 && data.activityId.size() <= 128
         && data.createdBy is string
         && data.type in ['explore', 'share', 'ask', 'challenge']
         && data.topic is string && data.topic.size() >= 1 && data.topic.size() <= 120
@@ -284,8 +285,10 @@ service cloud.firestore {
           // Start another activity only after the previous one is closed.
           (resource.data.status in ['declined', 'cancelled', 'stopped']
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-              'createdBy','type','topic','status','acceptedBy','createdAt','updatedAt'
-            ])
+            'activityId', 'createdBy', 'type', 'topic', 'status',
+            'acceptedBy', 'createdAt', 'updatedAt'
+          ])
+
             && request.resource.data.createdBy == request.auth.uid
             && request.resource.data.status == 'invited'
             && request.resource.data.acceptedBy == [request.auth.uid]
@@ -315,7 +318,63 @@ service cloud.firestore {
         );
       allow delete: if false;
     }
-    // Ratings, Skill Passport and all other collections remain closed.
+    // Each user can optionally save an activity to their OWN Passport only.
+    // A stable activityId is the document ID: no duplicate entries per activity.
+    // This records a personal experience, never the other person's endorsement.
+    function validPassportEntry(data, entryId) {
+      return data.keys().hasOnly([
+          'activityId', 'matchId', 'type', 'topic', 'partnerDisplayName', 'activityCreatedAt', 'savedAt'
+        ])
+        && data.keys().hasAll([
+          'activityId', 'matchId', 'type', 'topic', 'partnerDisplayName', 'activityCreatedAt', 'savedAt'
+        ])
+        && data.activityId is string
+        && data.activityId.size() >= 1 && data.activityId.size() <= 128
+        && entryId == data.activityId
+        && data.matchId is string && data.matchId.size() >= 1 && data.matchId.size() <= 128
+        && data.type in ['explore', 'share', 'ask', 'challenge']
+        && data.topic is string && data.topic.size() >= 1 && data.topic.size() <= 120
+        && data.partnerDisplayName is string
+        && data.partnerDisplayName.size() >= 2 && data.partnerDisplayName.size() <= 40
+        && data.activityCreatedAt is timestamp
+        && data.savedAt == request.time;
+    }
+    function verifiedPassportSource(data, uid) {
+      let matchPath = /databases/$(database)/documents/matchRequests/$(data.matchId);
+      let activityPath = /databases/$(database)/documents/matchRequests/$(data.matchId)/activities/current;
+      return exists(matchPath) && exists(activityPath)
+        && get(matchPath).data.status == 'accepted'
+        && (get(matchPath).data.from == uid || get(matchPath).data.to == uid)
+        && get(matchPath).data.acceptedBy is list
+        && get(matchPath).data.acceptedBy.hasAll([
+          get(matchPath).data.from, get(matchPath).data.to
+        ])
+        && data.partnerDisplayName == (
+          get(matchPath).data.from == uid
+            ? get(matchPath).data.toDisplayName
+            : get(matchPath).data.fromDisplayName
+        )
+        && get(activityPath).data.status in ['active', 'stopped']
+        && get(activityPath).data.acceptedBy is list
+        && get(activityPath).data.acceptedBy.hasAll([
+          get(matchPath).data.from, get(matchPath).data.to
+        ])
+        && get(activityPath).data.activityId == data.activityId
+        && get(activityPath).data.createdAt == data.activityCreatedAt
+        && get(activityPath).data.type == data.type
+        && get(activityPath).data.topic == data.topic;
+    }
+    match /users/{uid}/passportEntries/{entryId} {
+      allow get: if isOwner(uid);
+      allow list: if isOwner(uid);
+      allow create: if isOwner(uid) && isTester()
+        && validPassportEntry(request.resource.data, entryId)
+        && verifiedPassportSource(request.resource.data, uid);
+      allow update: if false;
+      // Owners can delete a mistaken entry at any time, even after the match ends.
+      allow delete: if isOwner(uid);
+    }
+    // Ratings and all other collections remain closed.
     match /{document=**} { allow read, write: if false; }
   }
 }

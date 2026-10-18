@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { auth } from '../firebase.js';
 import ChatDevPanel from './ChatDevPanel.jsx';
 import ActivityDevPanel from './ActivityDevPanel.jsx';
+import PassportDevPanel from './PassportDevPanel.jsx';
 import { getMyProfile } from '../services/userService.js';
 import { startAutomaticMatching } from '../services/autoMatchService.js';
 import {
@@ -136,6 +137,7 @@ export default function MatchDevPanel() {
       <button style={button} disabled={busy} onClick={() => run('Leave match', () => endMatch(activeMatch.id))}>Leave</button>
       <button style={button} disabled={busy} onClick={() => run('Next person', () => nextPerson(activeMatch.id, activeMatch.category))}>Next person</button>
     </div>}
+    <PassportDevPanel />
     <p style={{ fontSize: 12 }}>Approved-testers-only development page. Age-appropriate matching, blocking, reporting and moderation are still needed before public use.</p>
   </section>;
 }
