@@ -11,7 +11,7 @@ export default function HomePage({ navigate, startMode }) {
                 <h1>Meet. Discover.<br/><span>Share.</span></h1>
                 <p>Meet people with shared interests, chat freely, and discover skills together—only if you feel like it.</p>
                 <div className="hero-ctas"><button className="btn btn-primary" onClick={() => startMode('meet')}>Get started <ArrowRight size={18}/></button><button className="btn btn-outline" onClick={() => navigate('passport')}>View Skill Passport</button></div>
-                <div className="hero-footnote"><ShieldCheck size={16}/> Private hackathon demo · Approved fictional profiles only</div>
+                <div className="hero-footnote"><ShieldCheck size={16}/> Private hackathon demo</div>
               </div>
               <div className="hero-visual" aria-label="Illustration of people sharing skills">
                 <div className="connection-line connection-line-a"/><div className="connection-line connection-line-b"/>

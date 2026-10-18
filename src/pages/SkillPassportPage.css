@@ -1,0 +1,54 @@
+/* Small, scoped enhancements that reuse the existing Skill Passport layout. */
+.passport-profile-info { min-width: 0; flex: 1; }
+.passport-interests { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin: 8px 0 12px; }
+.passport-interest-chip { display: inline-flex; align-items: center; max-width: 100%; padding: 5px 10px; border: 1px solid #dbe8fc; border-radius: 20px; background: #eef5ff; color: #3766ab; font-size: 11px; font-weight: 700; overflow-wrap: anywhere; }
+.passport-interests-empty { color: var(--muted); font-size: 12px; }
+.passport-experience-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 11px; }
+.passport-experience { display: flex; align-items: center; gap: 12px; padding: 13px; border: 1px solid var(--line); border-radius: 12px; background: #fbfcff; }
+.passport-experience .activity-icon { flex: 0 0 34px; }
+.passport-experience-details { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.passport-experience-details strong { font-size: 12px; line-height: 1.5; }
+.passport-experience-details small { font-size: 11px; line-height: 1.6; }
+.passport-delete { display: inline-flex; align-items: center; gap: 5px; padding: 8px 10px; border: 1px solid #e6eaf1; border-radius: 8px; background: #fff; color: #718096; font: inherit; font-size: 11px; cursor: pointer; transition: background .15s, color .15s; }
+.passport-delete:hover:not(:disabled) { background: #fff3f2; color: #bd3f38; border-color: #f5d0cc; }
+.passport-delete:disabled { opacity: .55; cursor: not-allowed; }
+.passport-message { margin: 0 0 13px; color: var(--muted); font-size: 12px; line-height: 1.6; }
+.passport-error { color: #ae3030; }
+.passport-signin { display: flex; flex-direction: column; align-items: flex-start; gap: 14px; }
+.passport-signin h2 { margin: 0; }
+.passport-signin p { margin: 0; color: var(--muted); }
+@media(max-width: 560px) {
+  .passport-experience { flex-wrap: wrap; }
+  .passport-experience-details { flex-basis: calc(100% - 50px); }
+  .passport-delete { margin-left: 46px; }
+}
+
+/* A full-width, searchable experience library replaces the old sidebar and milestones. */
+.passport-layout-wide { grid-template-columns: minmax(0, 1fr); }
+.passport-library-heading { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+.passport-library-heading h3 { margin-bottom: 6px; }
+.passport-library-heading p { color: var(--muted); font-size: 12px; line-height: 1.5; margin: 0; }
+.passport-library-limit { color: var(--muted); font-size: 11px; }
+.passport-library-controls { display: flex; flex-direction: column; gap: 16px; }
+.passport-activity-filters { display: flex; gap: 8px; flex-wrap: wrap; }
+.passport-filter-chip { display: inline-flex; gap: 7px; align-items: center; padding: 9px 12px; border: 1px solid #e0e8f3; border-radius: 18px; background: #fff; color: #536780; font: inherit; font-size: 12px; cursor: pointer; }
+.passport-filter-chip span { font-size: 11px; color: #8495ab; }
+.passport-filter-chip.is-active { color: #2368df; background: #eef5ff; border-color: #a9c9ff; font-weight: 700; }
+.passport-filter-chip.is-active span { color: inherit; }
+.passport-library-tools { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.passport-search { flex: 1 1 250px; display: flex; align-items: center; gap: 8px; padding: 0 13px; min-height: 44px; border: 1px solid #dbe3ee; border-radius: 10px; color: #8696ac; }
+.passport-search:focus-within { border-color: #8bb2ff; outline: 2px solid #dceaff; }
+.passport-search input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: inherit; color: var(--ink); font-size: 12px; }
+.passport-sort { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 12px; }
+.passport-sort select { padding: 11px 30px 11px 11px; border: 1px solid #dbe3ee; border-radius: 10px; background: #fff; color: var(--ink); font: inherit; font-size: 12px; }
+.passport-filter-chip:focus-visible, .passport-sort select:focus-visible, .passport-library-count button:focus-visible { outline: 2px solid #2368df; outline-offset: 2px; }
+.passport-library-count { display: flex; align-items: center; gap: 13px; flex-wrap: wrap; margin: 16px 0 13px; color: var(--muted); font-size: 11px; }
+.passport-library-count button { border: 0; background: transparent; color: #2368df; font: inherit; font-weight: 700; cursor: pointer; padding: 2px; }
+@media (max-width: 850px) {
+  .passport-experience-list { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 560px) {
+  .passport-library-tools { align-items: stretch; }
+  .passport-search, .passport-sort { flex: 1 1 100%; }
+  .passport-sort select { flex: 1; }
+}

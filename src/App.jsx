@@ -338,7 +338,7 @@ export default function App() {
 
       {page === 'review' && match && <ReviewPage {...{match,navigate,activityType,reviewSubmitted,rating,setRating,review,setReview,
           submitReview,stopActivity,leaveChat,teacherIsMe,lessonState}} />}
-      {page === 'passport' && <SkillPassportPage progress={progress} startMode={startMode} resetDemo={resetDemo} />}
+      {page === 'passport' && <SkillPassportPage key={authUser?.uid || 'guest'} user={authUser} authReady={authReady} navigate={navigate} startMode={startMode} />}
       {page === 'login' && <LoginPage navigate={navigate} />}
       {page === 'sign in' && <SignUpPage navigate={navigate} />}
     </main>
