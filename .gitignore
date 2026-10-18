@@ -27,7 +27,6 @@ dist-ssr
 .env
 .env.*
 !.env.example
-.venv
 
 #livekit
 livekit-server/.env

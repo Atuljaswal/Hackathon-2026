@@ -9,6 +9,7 @@ import {
 import './App.css';
 import { canSaveActivity, recordSavedActivity } from './activityLogic.js';
 import SkillCall from "./components/SkillCall";
+import { getLiveKitToken } from "./livekitService";
 
 const CATEGORIES = [
   { id: 'Languages', label: 'Languages', Icon: Languages },
@@ -224,6 +225,21 @@ export default function App() {
     setMatch(null); setCandidateIndex(0); setMessages([]); setDraft(''); clearLesson();
     setToast('Demo progress reset.'); navigate('home');
   }
+  async function startCall(matchId) {
+  try {
+    const { token } = await getLiveKitToken(matchId);
+
+    setLivekitToken(token);
+    setInCall(true);
+  } catch (error) {
+    console.error("Could not start call:", error);
+    setToast(error.message);
+  }
+}
+function endCall() {
+  setInCall(false);
+  setLivekitToken(null);
+}
 
   return <div className="site-shell">
     <header className="site-header">
@@ -268,7 +284,6 @@ export default function App() {
         </section>
         <section className="why-section wrap"><div className="why-row"><div><span className="why-icon"><Compass size={20}/></span><strong>Shared interests</strong><p>Start conversations with common ground.</p></div><div><span className="why-icon"><Clock3 size={20}/></span><strong>Quick sessions</strong><p>Try an activity together only when you want to.</p></div><div><span className="why-icon"><Award size={20}/></span><strong>Real progress</strong><p>Save experiences when both people choose to.</p></div></div></section>
       </>}
-
       {page === 'interests' && <section className="flow-page wrap narrow-flow">
         <div className="backline"><button className="back-button" onClick={() => navigate('home')}><ArrowLeft size={17}/> Back</button><div className="step-label">Step 1 of 2</div></div>
         <div className="progress-steps"><span className="step-current"/><span/><span/></div>
@@ -279,7 +294,13 @@ export default function App() {
         <button className="btn btn-primary full" disabled={categories.length === 0} onClick={startSearch}>Continue <ArrowRight size={18}/></button>
         <p className="small-note"><ShieldCheck size={15}/> Only fictional demo profiles are used in this prototype.</p>
       </section>}
-
+      <button
+        type="button"
+        onClick={() => startCall(match.id)}
+        disabled={!match || inCall}
+      >
+      Start video call
+      </button> 
       {page === 'matching' && <section className="flow-page wrap narrow-flow matching-page">
         <div className="backline"><button className="back-button" onClick={() => navigate('interests')}><ArrowLeft size={17}/> Edit interests</button><div className="step-label">Step 2 of 2</div></div>
         <div className="progress-steps"><span className="step-current"/><span className="step-current"/><span/></div>
@@ -322,17 +343,14 @@ export default function App() {
         </div>
         <div className="mobile-chat-switch"><button className={mobileChatTab === 'chat' ? 'selected' : ''} onClick={() => setMobileChatTab('chat')}><MessageCircle size={16}/> Chat</button><button className={mobileChatTab === 'lesson' ? 'selected' : ''} onClick={() => setMobileChatTab('lesson')}><Sparkles size={16}/> Activities</button></div>
       </section>}
-      
+
       {page === 'chat' && inCall && livekitToken && (
         <section className="wrap">
           <SkillCall
             token={livekitToken}
             serverUrl={import.meta.env.VITE_LIVEKIT_URL}
             voiceOnly={false}
-            onLeave={() => {
-              setInCall(false);
-              setLivekitToken(null);
-            }}
+            onLeave={endCall}
           />
         </section>
       )}
