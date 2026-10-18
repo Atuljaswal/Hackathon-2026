@@ -13,11 +13,14 @@ import ReviewPage from './pages/ReviewPage.jsx';
 import SkillPassportPage from './pages/SkillPassportPage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import SignUpPage from './pages/SignUpPage.jsx';
+import { logout, subscribeToAuth } from './services/authService.js';
 
 
 export default function App() {
   const [page, setPage] = useState('home');
   const [mobileNav, setMobileNav] = useState(false);
+  const [authUser, setAuthUser] = useState(null);
+  const [authReady, setAuthReady] = useState(false);
   const [mode, setMode] = useState('meet');
   const [categories, setCategories] = useState(['Languages', 'Gaming']);
   const [goal, setGoal] = useState('');
@@ -42,6 +45,11 @@ export default function App() {
   const progress = demoData.progress;
   const blocked = demoData.blocked;
   const [activity, setActivity] = useState('') // share, getHelp, challenge, other
+
+  useEffect(() => subscribeToAuth(currentUser => {
+    setAuthUser(currentUser);
+    setAuthReady(true);
+  }), []);
 
   useEffect(() => {
     try { localStorage.setItem(KEY, JSON.stringify(demoData)); } catch { /* storage unavailable */ }
@@ -69,6 +77,14 @@ export default function App() {
   const canSave = canSaveActivity({ status: lessonState, match, meAgreed: myConfirmation, peerAgreed: peerConfirmation });
 
   function navigate(next) { setPage(next); setMobileNav(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+  async function handleLogout() {
+    try {
+      await logout();
+      navigate('home');
+    } catch {
+      setToast('Could not log out. Please try again.');
+    }
+  }
   function startMode(next) { setMode(next); navigate('interests'); }
   function toggleCategory(id) { setCategories(old => old.includes(id) ? old.filter(x => x !== id) : [...old, id]); setCandidateIndex(0); }
   function startSearch() { setCandidateIndex(0); navigate('matching'); }
@@ -162,10 +178,15 @@ export default function App() {
           <button className={page === 'home' ? 'nav-active' : ''} onClick={() => navigate('home')}>Home</button>
           <button className={['interests', 'matching', 'chat'].includes(page) ? 'nav-active' : ''} onClick={() => startMode('meet')}>Find a match</button>
           <button className={page === 'passport' ? 'nav-active' : ''} onClick={() => navigate('passport')}>Skill Passport</button>
-          <button className={page === 'login' ? 'nav-active' : ''} onClick={() => navigate('login')}>Login</button>
-          <button className={page === 'sign in' ? 'nav-active' : ''} onClick={() => navigate('sign in')}>Sign In</button>
+          {authReady && (authUser ? (
+            <button onClick={handleLogout}>Log out</button>
+          ) : <>
+            <button className={page === 'login' ? 'nav-active' : ''} onClick={() => navigate('login')}>Log in</button>
+            <button className={page === 'sign in' ? 'nav-active' : ''} onClick={() => navigate('sign in')}>Sign up</button>
+            <button className='logout' onClick={() => logout()}>Log Out</button>
+          </>)}
         </nav>
-        <div className="header-actions"><button className="avatar-button" onClick={() => navigate('passport')} aria-label="Open your Skill Passport"><span className="avatar avatar--xs avatar--blue">YOU</span></button><button className="menu-button" aria-label="Toggle navigation" aria-expanded={mobileNav} onClick={() => setMobileNav(!mobileNav)}><Menu size={22}/></button></div>
+        <div className="header-actions"><button className="avatar-button" onClick={() => navigate(authUser ? 'passport' : 'login')} aria-label={authUser ? 'Open your Skill Passport' : 'Log in'}><span className="avatar avatar--xs avatar--blue">{authUser ? (authUser.displayName || authUser.email || 'You').slice(0, 2).toUpperCase() : 'YOU'}</span></button><button className="menu-button" aria-label="Toggle navigation" aria-expanded={mobileNav} onClick={() => setMobileNav(!mobileNav)}><Menu size={22}/></button></div>
       </div>
     </header>
 
@@ -185,7 +206,7 @@ export default function App() {
       {page === 'login' && <LoginPage navigate={navigate} />}
       {page === 'sign in' && <SignUpPage navigate={navigate} />}
     </main>
-    <footer className="site-footer"><div className="wrap footer-inner"><span><strong>Skill Roulette</strong> · Meet. Discover. Share.</span><span>Hackathon prototype · Simulated accounts only</span></div></footer>
+    <footer className="site-footer"><div className="wrap footer-inner"><span><strong>Skill Roulette</strong> · Meet. Discover. Share.</span><span>Hackathon prototype · Firebase test accounts</span></div></footer>
 
     {reportOpen && <div className="modal-backdrop" role="presentation" onMouseDown={e => { if (e.target === e.currentTarget) setReportOpen(false); }}><div role="dialog" aria-modal="true" aria-labelledby="report-title" className="report-modal"><div className="modal-heading"><h2 id="report-title">Report or block {match?.name}</h2><button aria-label="Close report dialog" onClick={() => setReportOpen(false)}><X size={20}/></button></div><p>During this demo, reports are only recorded as a local confirmation. A public platform would need a real moderation service.</p><label htmlFor="reason">Reason for reporting</label><select id="reason" value={reportReason} onChange={e => setReportReason(e.target.value)}><option>Inappropriate language</option><option>Bullying or harassment</option><option>Unwanted contact information</option><option>Other concern</option></select><button className="btn btn-outline full" onClick={() => reportUser(false)}><Flag size={17}/> Submit demo report</button><button className="btn btn-danger full" onClick={() => reportUser(true)}><Ban size={17}/> Block this demo profile</button></div></div>}
     {toast && <div role="status" className="toast"><CheckCircle2 size={17}/>{toast}<button aria-label="Dismiss message" onClick={() => setToast('')}><X size={16}/></button></div>}
