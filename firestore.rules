@@ -248,7 +248,74 @@ service cloud.firestore {
         && request.resource.data.createdAt == request.time;
       allow update, delete: if false;
     }
-    // Ratings, activities and all other collections remain closed.
+    // Optional Skill Activities: one "current" invitation per accepted match.
+    // Both people decide independently. Stopping an activity never ends chat.
+    function validActivity(data) {
+      return data.keys().hasOnly([
+          'createdBy', 'type', 'topic', 'status', 'acceptedBy', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasAll([
+          'createdBy', 'type', 'topic', 'status', 'acceptedBy', 'createdAt', 'updatedAt'
+        ])
+        && data.createdBy is string
+        && data.type in ['explore', 'share', 'ask', 'challenge']
+        && data.topic is string && data.topic.size() >= 1 && data.topic.size() <= 120
+        && data.status in ['invited', 'active', 'declined', 'cancelled', 'stopped']
+        && data.acceptedBy is list
+        && data.acceptedBy.size() >= 1 && data.acceptedBy.size() <= 2
+        && data.createdAt is timestamp && data.updatedAt is timestamp;
+    }
+    match /matchRequests/{matchId}/activities/{activityId} {
+      allow get: if activityId == 'current' && isTester() && isAcceptedMatchParticipant(matchId);
+      allow list: if false;
+      allow create: if activityId == 'current'
+        && isTester() && isAcceptedMatchParticipant(matchId)
+        && validActivity(request.resource.data)
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.status == 'invited'
+        && request.resource.data.acceptedBy == [request.auth.uid]
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+      allow update: if activityId == 'current'
+        && isTester() && isAcceptedMatchParticipant(matchId)
+        && validActivity(request.resource.data)
+        && request.resource.data.updatedAt == request.time
+        && (
+          // Start another activity only after the previous one is closed.
+          (resource.data.status in ['declined', 'cancelled', 'stopped']
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              'createdBy','type','topic','status','acceptedBy','createdAt','updatedAt'
+            ])
+            && request.resource.data.createdBy == request.auth.uid
+            && request.resource.data.status == 'invited'
+            && request.resource.data.acceptedBy == [request.auth.uid]
+            && request.resource.data.createdAt == request.time)
+          // Only the recipient can accept and activate the invitation.
+          || (resource.data.status == 'invited'
+            && request.auth.uid != resource.data.createdBy
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              'acceptedBy','status','updatedAt'
+            ])
+            && request.resource.data.acceptedBy == [resource.data.createdBy, request.auth.uid]
+            && request.resource.data.status == 'active')
+          // The recipient can decline without ending chat.
+          || (resource.data.status == 'invited'
+            && request.auth.uid != resource.data.createdBy
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','updatedAt'])
+            && request.resource.data.status == 'declined')
+          // The creator can withdraw before the recipient accepts.
+          || (resource.data.status == 'invited'
+            && request.auth.uid == resource.data.createdBy
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','updatedAt'])
+            && request.resource.data.status == 'cancelled')
+          // Either participant can stop an active activity.
+          || (resource.data.status == 'active'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','updatedAt'])
+            && request.resource.data.status == 'stopped')
+        );
+      allow delete: if false;
+    }
+    // Ratings, Skill Passport and all other collections remain closed.
     match /{document=**} { allow read, write: if false; }
   }
 }
