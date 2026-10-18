@@ -1,29 +1,78 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap');
-:root{font-family:'DM Sans',system-ui,-apple-system,'Segoe UI',sans-serif;font-synthesis:none;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased;background:#fff;color:#111d34}
-*{box-sizing:border-box}body{margin:0;min-width:320px}button,input,textarea,select{font:inherit}button{cursor:pointer}button:disabled{cursor:not-allowed}button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:3px solid #9ac2ff;outline-offset:3px}::selection{background:#cfe0ff}a{color:inherit}
 
-.camera {
-	position: relataive;
+/* Base */
+:root {
+  font-family: 'DM Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  background: #fff;
+  color: #111d34;
 }
 
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 3px solid #9ac2ff;
+  outline-offset: 3px;
+}
+
+::selection {
+  background: #cfe0ff;
+}
+
+a {
+  color: inherit;
+}
+
+.camera {
+  position: relative;
+}
+
+/* Photo result overlay (slides in from the right when .hasPhoto is set) */
 .result {
-	position: fixed;
-	top: 0;
-	left: 100%;
-	width: 100%;
-	height: 100%;
-	display: flex;
-	align-items: center;
-	background-color: rgba(0,0,0,09);
-	transition: 0.4s;
+  position: fixed;
+  top: 0;
+  left: 100%;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  background-color: rgba(0, 0, 0, 0.9);
+  transition: 0.4s;
 }
 
 .result.hasPhoto {
-	left: 0;
+  left: 0;
 }
 
 video {
-	width: 100%;
-	max-width: 100%;
-	height: auto;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
 }
