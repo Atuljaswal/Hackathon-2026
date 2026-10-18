@@ -135,3 +135,17 @@
   .auth-page { padding: 26px 14px; min-height: calc(100svh - 130px); }
   .auth-card { padding: 26px 22px; border-radius: 18px; }
 }
+
+/* Authentication status feedback */
+.auth-error {
+  margin: 0;
+  padding: 11px 13px;
+  border: 1px solid #f1c4ca;
+  border-radius: 10px;
+  background: #fff4f5;
+  color: #a51d33;
+  text-align: left;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.auth-submit:disabled { opacity: .6; cursor: wait; transform: none; }
