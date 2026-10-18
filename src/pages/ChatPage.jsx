@@ -3,12 +3,10 @@ import { ArrowLeft, ArrowRight, BookOpen, Check, CheckCircle2, Flag, MessageCirc
 import { Avatar, StageTag } from '../components/Shared.jsx';
 import { ACTIVITIES, ACTIVITY_PROMPTS } from '../data/demoData.js';
 import CameraView from '../components/Camera.jsx'; // Preserve your existing Camera.jsx file.
+import SkillCall from '../components/SkillCall.jsx';
 
 function CameraPlaceholder() {
   const videoRef = useRef(null)
-  const photoRef = useRef(null)
-
-  const [hasPhoto, setHasPhoto] = useState(false)
 
   const getVideo = () => {
     navigator.mediaDevices.getUserMedia({
@@ -99,7 +97,7 @@ function ChatTabPanel({ id, active, children }) {
   );
 }
 
-export default function ChatPage({ match, mobileChatTab = 'chat', leaveChat, nextPerson, setReportOpen, messages, simulateReply, draft, setDraft, sendMessage, lessonState, activityType, selectActivity, activityTopic, setActivityTopic, activityDefaults, inviteLesson, stopActivity, confirmInviteB, lessonChecks, setLessonChecks, myConfirmation, setMyConfirmation, peerConfirmation, setPeerConfirmation, canSave, completeLesson, isTeachingActivity, teacherIsMe, navigate, sessionGoal, setMobileChatTab, live = false, currentUid, busy = false }) {
+export default function ChatPage({ match, mobileChatTab = 'chat', leaveChat, nextPerson, setReportOpen, messages, simulateReply, draft, setDraft, sendMessage, lessonState, activityType, selectActivity, activityTopic, setActivityTopic, activityDefaults, inviteLesson, stopActivity, confirmInviteB, lessonChecks, setLessonChecks, myConfirmation, setMyConfirmation, peerConfirmation, setPeerConfirmation, canSave, completeLesson, isTeachingActivity, teacherIsMe, navigate, sessionGoal, setMobileChatTab, live = false, currentUid, busy = false, inCall, livekitToken, startCall, endCall, serverUrl }) {
   // Real Firebase chat uses the same page styling. Camera/activities remain
   // inactive placeholders until their separate LiveKit/Firestore UI integration.
   if (live) return (
@@ -154,14 +152,34 @@ export default function ChatPage({ match, mobileChatTab = 'chat', leaveChat, nex
       </div>
     </section>
   );
+
   return (
     <section className="chat-page wrap">
             <div className="chat-page-heading"><button className="back-button" onClick={leaveChat}><ArrowLeft size={17}/> Leave chat</button><div className="chat-heading-actions"><StageTag kind="green"><span className="little-dot"/> Simulated conversation</StageTag><button className="btn btn-outline chat-exit-button" onClick={leaveChat}><LogOut size={16}/> Leave conversation</button></div></div>
             <div className="chat-layout">
-              <div>
-                <CameraPlaceholder/> {/* other person. */}
-                <CameraView/> {/* self */}
-              </div>
+              <div className="chat-video-area">
+                {inCall && livekitToken ? (
+                  <SkillCall
+                    token={livekitToken}
+                    serverUrl={serverUrl}
+                    voiceOnly={false}
+                    onLeave={endCall}
+                  />
+                ) : (
+                  <div className="video-preview">
+                    <CameraView autoStart={false} />
+
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      onClick={() => startCall(match.id)}
+                      disabled={!match}
+                    >
+                      Start video call
+                    </button>
+                  </div>
+                )}
+            </div>
 
               <div className="chat-tabs">
                 <ChatTabs active={mobileChatTab} onChange={setMobileChatTab}/>
