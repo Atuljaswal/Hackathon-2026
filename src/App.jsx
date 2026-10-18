@@ -3,6 +3,8 @@ import { Menu, Flag, Ban, X, CheckCircle2 } from 'lucide-react';
 import './App.css';
 import './auth-pages.css'
 import { canSaveActivity, recordSavedActivity } from './activityLogic.js';
+import SkillCall from "./components/SkillCall";
+import { getLiveKitToken } from "./livekitService";
 import { PEOPLE, MODES, ACTIVITY_PROMPTS, EMPTY_PROGRESS, KEY, readDemo } from './data/demoData.js';
 import { Logo } from './components/Shared.jsx';
 import HomePage from './pages/HomePage.jsx';

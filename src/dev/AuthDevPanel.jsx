@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { signUp, login, logout, subscribeToAuth } from '../services/authService.js';
 import { getMyProfile, updateMySkills } from '../services/userService.js';
 import MatchDevPanel from './MatchDevPanel.jsx';
+import VideoCallDevPanel from './VideoCallDevPanel.jsx';
 
 const fieldStyle = { display: 'block', width: '100%', padding: 9, border: '1px solid #bbb', borderRadius: 8 };
 const buttonStyle = { padding: '10px 14px', borderRadius: 8, border: '1px solid #777', cursor: 'pointer' };
@@ -75,6 +76,7 @@ export default function AuthDevPanel() {
       </label>
       <button style={buttonStyle} disabled={busy} onClick={() => run('Save interests', () => updateMySkills({ categories: split(skills), canTeach: [], wantsToLearn: [] }))}>Save interests</button><MatchDevPanel />
     </section>}
+    {user && <VideoCallDevPanel key={user.uid} />}
     <p style={{ marginTop: 24, fontSize: 13, color: '#555' }}>Never use this developer page to collect real users' credentials. For controlled local testing only.</p>
   </main>;
 }
