@@ -4,6 +4,7 @@ import {
   ACTIVITY_TYPES, MAX_ACTIVITY_TOPIC_LENGTH, watchActivity, createActivityInvite,
   acceptActivityInvite, declineActivityInvite, cancelActivityInvite, stopActivity,
 } from '../services/activityService.js';
+import { saveExperience } from '../services/passportService.js';
 
 const button = { padding: '9px 12px', margin: '4px 6px 4px 0', cursor: 'pointer', borderRadius: 7, border: '1px solid #aab3bd' };
 const LABELS = Object.fromEntries(ACTIVITY_TYPES.map(item => [item.id, item.label]));
@@ -35,6 +36,7 @@ export default function ActivityDevPanel({ matchId, peerName = 'Matched member' 
   const pending = activity?.status === 'invited';
   const active = activity?.status === 'active';
   const canInvite = !pending && !active;
+  const canSave = !!activity?.activityId && ['active', 'stopped'].includes(activity.status);
 
   return <section aria-label="Skill Activities" style={{ border: '1px solid #bac5d1', borderRadius: 10, padding: 14, marginTop: 14 }}>
     <h4 style={{ margin: '0 0 6px' }}>Skill Activities (optional)</h4>
@@ -73,6 +75,13 @@ export default function ActivityDevPanel({ matchId, peerName = 'Matched member' 
       <p>Both people accepted. Discuss or work on the activity together in chat. No checklist, review, or completion is required.</p>
       <button style={button} disabled={busy} onClick={() => run('Stop', () => stopActivity(matchId))}>Stop activity · Return to chat</button>
     </div>}
-    <p style={{ fontSize: 12 }}>Stopping an activity does not end your match. Saving an experience to Skill Passport will be added separately, only with both participants' consent.</p>
+    {canSave && <div style={{ padding: 12, border: '1px solid #d6e4f0', borderRadius: 8, marginTop: 12 }}>
+      <p><b>Save this experience?</b> This is optional and saves only to your own Passport. The other person doesn't have to save anything.</p>
+      <button style={button} disabled={busy} onClick={() => run('Save to my Passport', async () => {
+        const result = await saveExperience(matchId);
+        if (result.alreadySaved) setNotice('Already in your Passport.');
+      })}>Save to my Skill Passport</button>
+    </div>}
+    <p style={{ fontSize: 12 }}>Stopping an activity does not end your match. Nothing is saved unless you choose to save it. You can delete saved entries later from your Passport.</p>
   </section>;
 }
