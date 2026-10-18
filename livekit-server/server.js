@@ -11,7 +11,7 @@ const { AccessToken } = require("livekit-server-sdk");
 const app = express();
 
 app.use(cors({
-  origin: "http://localhost:5173/?auth-test=1",
+  origin: "http://localhost:5173",
 }));
 
 app.use(express.json());
@@ -62,10 +62,17 @@ app.post("/api/livekit/token", async (req, res) => {
     }
 
     // 4. Read the actual match from Firestore.
-    const matchSnapshot = await db
-      .collection("matches")
-      .doc(matchId)
-      .get();
+    const matchRef = db
+  .collection("matchRequests")
+  .doc(matchId);
+
+    const matchSnapshot = await matchRef.get();
+
+    if (!matchSnapshot.exists) {
+        return res.status(404).json({
+        error: "Match not found"
+    });
+    };
 
     if (!matchSnapshot.exists) {
       return res.status(404).json({
@@ -77,8 +84,8 @@ app.post("/api/livekit/token", async (req, res) => {
 
     // IMPORTANT:
     // These field names must match Developer 1's schema.
-    const participants = match.participants;
-    const acceptedBy = match.acceptedBy;
+   const participants = [match.from, match.to];
+   const acceptedBy = match.acceptedBy;
 
     // 5. Validate the match and its participants.
     if (
@@ -115,7 +122,7 @@ app.post("/api/livekit/token", async (req, res) => {
     }
 
     // 7. The match must still be active.
-    if (match.status !== "active") {
+    if (match.status !== "accepted") {
       return res.status(403).json({
         error: "This match is not active",
       });

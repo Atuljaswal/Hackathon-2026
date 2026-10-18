@@ -1,9 +1,6 @@
 import { useEffect, useState } from 'react';
 import { signUp, login, logout, subscribeToAuth } from '../services/authService.js';
 import { getMyProfile, updateMySkills } from '../services/userService.js';
-import { useEffect, useState } from 'react';
-import { signUp, login, logout, subscribeToAuth } from '../services/authService.js';
-import { getMyProfile, updateMySkills } from '../services/userService.js';
 import MatchDevPanel from './MatchDevPanel.jsx';
 import VideoCallDevPanel from './VideoCallDevPanel.jsx';
 
