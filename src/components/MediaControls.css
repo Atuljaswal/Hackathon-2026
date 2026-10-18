@@ -1,0 +1,97 @@
+.media-controls {
+  --mc-ink: #1b1f24;
+  --mc-surface: #eceef1;
+  --mc-off: #e5484d;
+  --mc-accent: #2457d6;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  width: 100%;
+  max-width: 640px;
+  margin-top: 12px;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: var(--mc-ink);
+}
+
+/* One group per device: [options][toggle]. Groups sit side by side and only
+   wrap onto separate lines when there isn't room for both. */
+.media-controls__group {
+  display: flex;
+  flex: 1 1 200px;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* No dropdown (only one device): the group is just the icon button. */
+.media-controls__group--bare {
+  flex: none;
+}
+
+.media-controls__select {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.media-controls__select select {
+  width: 100%;
+  height: 40px;
+  padding: 0 10px;
+  font: inherit;
+  color: inherit;
+  background: var(--mc-surface);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  text-overflow: ellipsis;
+}
+
+.media-controls__btn {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  color: var(--mc-ink);
+  background: var(--mc-surface);
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.media-controls__btn--off {
+  color: #fff;
+  background: var(--mc-off);
+}
+
+.media-controls__btn:hover:not(:disabled) {
+  filter: brightness(0.95);
+}
+
+.media-controls__btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.media-controls__btn:focus-visible,
+.media-controls__select select:focus-visible {
+  outline: 2px solid var(--mc-accent);
+  outline-offset: 2px;
+}
+
+.media-controls__error {
+  flex: 1 1 100%;
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: #c2352f;
+}
+
+.media-controls__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

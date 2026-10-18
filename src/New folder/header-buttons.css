@@ -1,0 +1,94 @@
+/* Header: Log in / Sign up / Log out, lined up on the right beside the profile icon.
+   Imported by App.jsx after App.css so these rules win over the older header styles. */
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.avatar-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+  border-radius: 50%;
+}
+
+.header-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 38px;
+  padding: 0 18px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+  transition: background .15s, border-color .15s, color .15s, box-shadow .15s, transform .15s;
+}
+
+/* Sign up: the main call to action */
+.header-btn--solid {
+  background: var(--blue);
+  color: #fff;
+  box-shadow: 0 4px 9px #2c63e81a;
+}
+
+.header-btn--solid:hover,
+.header-btn--solid.nav-active {
+  background: var(--blue-dark);
+  box-shadow: 0 6px 14px #2c63e833;
+  transform: translateY(-1px);
+}
+
+/* Log in: outlined, sits next to Sign up */
+.header-btn--outline {
+  background: #fff;
+  border-color: #bcd3ff;
+  color: var(--blue);
+}
+
+.header-btn--outline:hover,
+.header-btn--outline.nav-active {
+  background: var(--soft-blue);
+  border-color: var(--blue);
+}
+
+/* Log out: deliberately quiet so it doesn't compete with the avatar */
+.header-btn--quiet {
+  padding: 0 12px;
+  background: none;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.header-btn--quiet:hover {
+  background: #f3f6fb;
+  color: var(--ink);
+}
+
+@media (max-width: 730px) {
+  .header-actions {
+    gap: 8px;
+  }
+
+  .header-btn {
+    height: 34px;
+    padding: 0 12px;
+    font-size: 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .header-btn {
+    transition: none;
+  }
+
+  .header-btn--solid:hover,
+  .header-btn--solid.nav-active {
+    transform: none;
+  }
+}

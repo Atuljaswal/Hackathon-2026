@@ -1,0 +1,27 @@
+.call-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  max-width: 640px;
+}
+
+/* The panel's gap handles spacing, so drop the controls' own top margin. */
+.call-panel .media-controls {
+  margin-top: 0;
+}
+
+.call-panel__note,
+.call-panel__error {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.call-panel__note {
+  color: #6a717b;
+}
+
+.call-panel__error {
+  color: #c2352f;
+}

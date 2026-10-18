@@ -1,45 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, BookOpen, Check, CheckCircle2, Flag, MessageCircle, RotateCcw, Send, ShieldCheck, Sparkles, LogOut, SkipForward } from 'lucide-react';
 import { Avatar, StageTag } from '../components/Shared.jsx';
 import { ACTIVITIES, ACTIVITY_PROMPTS } from '../data/demoData.js';
 import CameraView from '../components/Camera.jsx'; // Preserve your existing Camera.jsx file.
 import SkillCall from '../components/SkillCall.jsx';
 import LiveActivitiesPanel from './LiveActivitiesPanel.jsx';
-import MatchCallDevPanel from '../components/MatchCallDevPanel.jsx';
-
-function CameraPlaceholder() {
-  const videoRef = useRef(null)
-
-  const getVideo = () => {
-    navigator.mediaDevices.getUserMedia({
-      video: {width: 1920, height: 1080}
-    })
-    .then(stream => {
-      let video = videoRef.current;
-      video.srcObject = stream;
-      video.play();
-    })
-    .catch(err => {
-      console.error(err);
-    })
-  }
-
-  useEffect(() => {
-    getVideo();
-  }, [videoRef]);
-
-  return (
-  <div>
-    <div className="camera">
-      <video ref={videoRef}></video>
-    </div>
-    {/* <div className={'result' + (hasPhoto ? 'hasPhoto' : '')}>
-      <canvas ref={photoRef}></canvas>
-      <button>close</button>
-    </div> */}
-  </div>
-  )
-}
+import MatchCallPanel from '../components/MatchCallPanel.jsx';
 
 const CHAT_TABS = [
   { id: 'chat', label: 'Chat', Icon: MessageCircle },
@@ -112,9 +78,9 @@ export default function ChatPage({ match, mobileChatTab = 'chat', leaveChat, nex
         </div>
       </div>
       <div className="chat-layout">
-        {/* DEV 1 LiveKit engine + temporary controls. Dev 2 can replace this panel. */}
-        <div className="live-video-stack" aria-label="Live video call">
-          <MatchCallDevPanel
+        {/* Call UI. The LiveKit engine is the useMatchCall hook; this panel is presentation only. */}
+        <div className="live-video-stack">
+          <MatchCallPanel
             key={matchId}
             matchId={matchId}
             peerUid={match.id}

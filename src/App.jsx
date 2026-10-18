@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { Menu, Flag, Ban, X, CheckCircle2 } from 'lucide-react';
 import './App.css';
 import './auth-pages.css'
+import './header-buttons.css';
 import { canSaveActivity, recordSavedActivity } from './activityLogic.js';
 import { getLiveKitToken } from "./livekitService";
 import { PEOPLE, MODES, ACTIVITY_PROMPTS, EMPTY_PROGRESS, KEY, readDemo } from './data/demoData.js';
@@ -310,14 +311,17 @@ export default function App() {
             Find a match{activeSession && <span className="live-nav-indicator"> · {sessionPage === 'chat' ? 'In conversation' : 'Session active'}</span>}
           </button>
           <button className={page === 'passport' ? 'nav-active' : ''} onClick={() => navigate('passport')}>Skill Passport</button>
-          {authReady && (authUser ? (
-            <button onClick={handleLogout}>Log out</button>
-          ) : <>
-            <button className={page === 'login' ? 'nav-active' : ''} onClick={() => navigate('login')}>Log in</button>
-            <button className={page === 'sign in' ? 'nav-active' : ''} onClick={() => navigate('sign in')}>Sign up</button>
-          </>)}
         </nav>
-        <div className="header-actions"><button className="avatar-button" onClick={() => navigate(authUser ? 'passport' : 'login')} aria-label={authUser ? 'Open your Skill Passport' : 'Log in'}><span className="avatar avatar--xs avatar--blue">{authUser ? (authUser.displayName || authUser.email || 'You').slice(0, 2).toUpperCase() : 'YOU'}</span></button><button className="menu-button" aria-label="Toggle navigation" aria-expanded={mobileNav} onClick={() => setMobileNav(!mobileNav)}><Menu size={22}/></button></div>
+        <div className="header-actions">
+          {authReady && (authUser ? <>
+            <button className="header-btn header-btn--quiet" onClick={handleLogout}>Log out</button>
+            <button className="avatar-button" onClick={() => navigate('passport')} aria-label="Open your Skill Passport"><span className="avatar avatar--xs avatar--blue">{(authUser.displayName || authUser.email || 'You').slice(0, 2).toUpperCase()}</span></button>
+          </> : <>
+            <button className={`header-btn header-btn--outline${page === 'login' ? ' nav-active' : ''}`} onClick={() => navigate('login')}>Log in</button>
+            <button className={`header-btn header-btn--solid${page === 'sign in' ? ' nav-active' : ''}`} onClick={() => navigate('sign in')}>Sign up</button>
+          </>)}
+          <button className="menu-button" aria-label="Toggle navigation" aria-expanded={mobileNav} onClick={() => setMobileNav(!mobileNav)}><Menu size={22}/></button>
+        </div>
       </div>
     </header>
 
