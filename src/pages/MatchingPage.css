@@ -1,0 +1,137 @@
+/* The teammate's searching-screen styling, isolated from App.css so that
+   matchmaking and persistent navigation styles are not overwritten. */
+.matching-page .searching-card {
+  text-align: center;
+}
+
+.matching-page .search-pulse {
+  position: relative;
+  width: 92px;
+  height: 92px;
+  margin: 38px auto 46px;
+}
+
+.matching-page .search-pulse::before,
+.matching-page .search-pulse::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 2px solid var(--blue);
+  border-radius: 50%;
+  opacity: 0;
+  animation: skill-search-ripple 2.4s ease-out infinite;
+}
+
+.matching-page .search-pulse::after {
+  animation-delay: 1.2s;
+}
+
+.matching-page .search-pulse .avatar {
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes skill-search-ripple {
+  0% { transform: scale(1); opacity: .45; }
+  100% { transform: scale(2.1); opacity: 0; }
+}
+
+.matching-page .search-heading {
+  margin: 0 0 22px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 22px;
+  letter-spacing: -.5px;
+}
+
+.matching-page .search-label {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .7px;
+  text-transform: uppercase;
+}
+
+.matching-page .search-tags {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+}
+
+.matching-page .search-tags li {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 12px;
+  background: #f1f5fa;
+  border-radius: 8px;
+  color: #53647a;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.matching-page .search-tags svg { color: var(--blue); }
+
+.matching-page .search-goal {
+  margin: 0 0 16px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.matching-page .searching-card .btn { margin-top: 10px; }
+
+.matching-page .match-modal {
+  width: min(430px, 100%);
+  padding: 32px 27px 27px;
+  background: #fff;
+  border-radius: 17px;
+  box-shadow: 0 30px 80px #020e254d;
+  text-align: center;
+  animation: skill-match-modal-in .22s ease-out;
+}
+
+@keyframes skill-match-modal-in {
+  from { opacity: 0; transform: translateY(10px) scale(.98); }
+  to { opacity: 1; transform: none; }
+}
+
+.matching-page .match-modal h2 {
+  margin: 20px 0 8px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 28px;
+  letter-spacing: -.8px;
+}
+
+.matching-page .match-modal-text {
+  margin: 0 0 22px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.matching-page .match-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.matching-page .match-actions .btn { flex: 1; }
+
+.matching-page .btn-decline:hover:not(:disabled) {
+  background: #d93a30;
+  border-color: #d93a30;
+  color: #fff;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .matching-page .search-pulse::before,
+  .matching-page .search-pulse::after,
+  .matching-page .match-modal {
+    animation: none;
+  }
+}

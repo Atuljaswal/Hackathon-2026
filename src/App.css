@@ -2390,3 +2390,26 @@
     font-size: 11px;
   }
 }
+
+/* Live multi-category matchmaking and chat (keeps existing page styling). */
+.live-match-panel { display:flex; flex-direction:column; align-items:stretch; gap:14px; }
+.live-match-panel h2 { margin:0; font-size:21px; }
+.live-match-panel p { line-height:1.6; font-size:13px; color:var(--muted); margin:0; }
+.live-match-clock { text-align:center; font-size:32px!important; font-weight:800; color:var(--blue)!important; }
+.live-conversation { min-height:420px; max-height:620px; display:flex; }
+.live-conversation .chat-messages { min-height:320px; flex:1; overflow:auto; padding:20px; }
+.live-message-form { padding:13px; border-top:1px solid var(--line); }
+.live-match-actions { display:flex; gap:12px; margin-top:15px; }
+@media(max-width:470px) { .live-match-actions { flex-direction:column; } }
+
+.live-video-stack { display:flex; flex-direction:column; gap:5px; }
+.live-video-panel { flex:1; min-height:220px; background:#303030; color:#ccd1d9; border-radius:9px;
+  display:grid;place-items:center;text-align:center;font-size:12px; padding:18px; }
+.live-chat-error { width:min(1120px,calc(100% - 64px)); margin:18px auto -10px; }
+.chat-tablist span.chat-tab { display:inline-flex; align-items:center; gap:5px; padding:9px 12px; font-size:12px; color:#74839b; }
+.chat-tablist span.chat-tab.is-selected { color:var(--blue); font-weight:700; }
+@media(max-width:730px) { .live-video-stack { margin-bottom:14px; } .live-video-panel { min-height:150px; } }
+
+/* Keep the real matching/chat tree mounted while another page is visible. */
+.persistent-session[hidden] { display: none !important; }
+.live-nav-indicator { font-size: 11px; color: #17805a; font-weight: 700; }

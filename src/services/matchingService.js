@@ -3,6 +3,7 @@ import {
   runTransaction, serverTimestamp, where,
 } from 'firebase/firestore';
 import { auth, db } from '../firebase.js';
+import { normalizeCategories, sharedCategories } from './categoryUtils.js';
 
 const lobbyCollection = collection(db, 'lobby');
 const requestsCollection = collection(db, 'matchRequests');
@@ -16,18 +17,27 @@ function me() {
   return uid;
 }
 function validCategory(category) {
-  if (typeof category !== 'string' || !/^[a-zA-Z0-9 &-]{2,40}$/.test(category)) {
-    throw new Error('Select a valid category from your profile.');
+  if (typeof category !== 'string' || category.length < 2 || category.length > 40) {
+    throw new Error('Choose a valid shared interest.');
   }
 }
 const lobbyRef = uid => doc(db, 'lobby', uid);
 const requestRef = requestId => doc(db, 'matchRequests', requestId);
 const participant = (match, uid) => match.from === uid || match.to === uid;
 
-/** Enter the single-category queue. Your saved profile must include this category. */
-export async function joinQueue(category) {
+/** Read the signed-in user's existing lobby membership without changing it. */
+export async function getMyQueue() {
+  const snapshot = await getDoc(lobbyRef(me()));
+  return snapshot.exists() ? snapshot.data() : null;
+}
+
+/** Join with all selected interests; one overlapping category is sufficient. */
+export async function joinQueue(categoryOrCategories) {
   const uid = me();
-  validCategory(category);
+  const categories = normalizeCategories(
+    Array.isArray(categoryOrCategories) ? categoryOrCategories : [categoryOrCategories],
+  );
+  const category = categories[0];
   // Keep Join Queue atomic with automatic invitations. A delayed join must
   // never overwrite a busy lobby or an accepted match.
   await runTransaction(db, async tx => {
@@ -41,11 +51,12 @@ export async function joinQueue(category) {
     if (current.exists() && current.data().status === 'busy') {
       throw new Error('Leave your current invitation or match before rejoining the queue.');
     }
-    if (current.exists() && current.data().category !== category) {
-      throw new Error('Leave the existing queue before switching categories.');
+    if (!profile.data().categories?.includes(category) ||
+        categories.some(c => !profile.data().categories.includes(c))) {
+      throw new Error('Save your interests before joining the queue.');
     }
     tx.set(lobbyRef(uid), {
-      uid, category, displayName, status: 'waiting', updatedAt: serverTimestamp(),
+      uid, category, categories, displayName, status: 'waiting', updatedAt: serverTimestamp(),
     });
   });
 }
@@ -62,19 +73,21 @@ export async function leaveQueue() {
 }
 
 /** Refresh a waiting entry. The test UI uses this when searching again. */
-export async function refreshQueue(category) {
-  return joinQueue(category);
+export async function refreshQueue(categoryOrCategories) {
+  return joinQueue(categoryOrCategories);
 }
 
-/** Show available approved testers in the same category; private profiles stay private. */
-export async function findCandidates(category) {
+/** Find waiting users who share ANY chosen interest; do not read private profiles. */
+export async function findCandidates(categoryOrCategories) {
   const uid = me();
-  validCategory(category);
-  const snap = await getDocs(query(lobbyCollection, where('category', '==', category), limit(50)));
+  const categories = normalizeCategories(Array.isArray(categoryOrCategories)
+    ? categoryOrCategories : [categoryOrCategories]);
+  const snap = await getDocs(query(lobbyCollection,
+    where('categories', 'array-contains-any', categories), limit(50)));
   const cutoff = Date.now() - 5 * 60 * 1000;
   return snap.docs.map(x => x.data())
     .filter(x => x.uid !== uid && x.status === 'waiting' &&
-      x.updatedAt?.toMillis?.() >= cutoff)
+      x.updatedAt?.toMillis?.() >= cutoff && sharedCategories(categories, x.categories).length)
     .sort(() => Math.random() - 0.5);
 }
 
@@ -94,7 +107,8 @@ export async function requestMatch(targetUid, category) {
     ]);
     if (!mine.exists() || !theirs.exists() ||
         mine.data().status !== 'waiting' || theirs.data().status !== 'waiting' ||
-        mine.data().category !== category || theirs.data().category !== category) {
+        !mine.data().categories?.includes(category) ||
+        !theirs.data().categories?.includes(category)) {
       throw new Error('This participant is no longer available. Try another match.');
     }
     // Use only server-validated lobby names. Private profile documents remain private.
@@ -134,7 +148,7 @@ export async function acceptMatch(matchId) {
       tx.get(lobbyRef(match.from)), tx.get(lobbyRef(match.to)),
     ]);
     if (![sender, recipient].every(s => s.exists() && s.data().status === 'busy' &&
-        s.data().matchId === matchId && s.data().category === match.category)) {
+        s.data().matchId === matchId && s.data().categories?.includes(match.category))) {
       throw new Error('Someone left this proposal. Try another match.');
     }
     const prior = match.acceptedBy || [];
@@ -231,9 +245,9 @@ export async function endMatch(matchId) {
 }
 
 /** End then opt into a fresh search. Never record a skill outcome. */
-export async function nextPerson(matchId, category) {
+export async function nextPerson(matchId, categoryOrCategories) {
   await endMatch(matchId);
-  await joinQueue(category);
+  await joinQueue(categoryOrCategories);
 }
 
 export function watchMyQueue(callback, onError) {
