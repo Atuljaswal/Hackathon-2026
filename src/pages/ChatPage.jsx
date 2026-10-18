@@ -129,18 +129,30 @@ export default function ChatPage({ match, mobileChatTab = 'chat', leaveChat, nex
                 </ChatTabPanel>
                 <ChatTabPanel id="lesson" active={mobileChatTab}>
                   <div className="lesson-column">
-                    <div className="lesson-header"><span className="lesson-icon"><Sparkles size={22}/></span><div><h2>Skill activities</h2><p>Optional experiences, not formal lessons.</p></div></div>
+                    <div className="lesson-header">
+                      <span className="lesson-icon"><Sparkles size={22}/></span>
+                      <div>
+                        <h2>Skill activities</h2>
+                        <p>Optional experiences, not formal lessons.</p>
+                      </div>
+                    </div>
                     {lessonState === 'none' &&
                     <div className="lesson-content">
-                      <StageTag>optional</StageTag><h3>What activity would you like to try?</h3>
+                      <h3>What activity would you like to try?</h3>
                       <p className="lesson-summary">Keep chatting, or invite your match to explore something new.</p>
                       <div className="activity-options" role="group" aria-label="Choose a skill activity">
                         {ACTIVITIES.map(({ id, title, description, Icon }) => <button key={id} type="button" className={`activity-option ${activityType === id ? 'is-selected' : ''}`} aria-pressed={activityType === id} onClick={() => selectActivity(id)}><Icon size={18}/><span><strong>{title}</strong><small>{description}</small></span>{activityType === id && <CheckCircle2 size={17}/>}</button>)}
                       </div>
-                      <label className="activity-topic-label" htmlFor="activity-topic">Activity idea <span>(optional)</span></label>
-                        <input id="activity-topic" className="text-input activity-topic-input" maxLength={100} placeholder={activityDefaults[activityType]} value={activityTopic} onChange={e => setActivityTopic(e.target.value)} />
+                      <label className="activity-topic-label" htmlFor="activity-topic">Activity idea</label>
+                      <input id="activity-topic" className="text-input activity-topic-input" maxLength={100}
+                        placeholder={activityDefaults[activityType]}
+                        value={activityTopic}
+                        onChange={e => setActivityTopic(e.target.value)}
+                      />
 
-                      <div className="lesson-actions"><button className="btn btn-green full" onClick={inviteLesson}><Sparkles size={17}/> Invite to activity</button><button className="btn btn-outline full" onClick={() => setMobileChatTab('chat')}><MessageCircle size={16}/> Just keep chatting</button></div>
+                      <div className="lesson-actions">
+                        <button className="btn btn-green full" onClick={inviteLesson}><Sparkles size={17}/> Invite to activity</button>
+                      </div>
                     </div>
                     }
                     {
@@ -163,8 +175,11 @@ export default function ChatPage({ match, mobileChatTab = 'chat', leaveChat, nex
                         </div>
                         <h3>Experience saved!</h3>
                         <p>This optional activity has been added to your local demo Skill Passport. You can continue chatting or leave at any time.</p>
-                        {isTeachingActivity && !teacherIsMe && <button className="btn btn-outline full" onClick={() => navigate('review')}>Rate helpfulness (optional) <ArrowRight size={18}/></button>}<button className="btn btn-primary full" onClick={stopActivity}><MessageCircle size={16}/> Return to chat</button><button className="btn btn-outline full" onClick={() => navigate('passport')}>View Skill Passport</button></div>}
-                    <div className="lesson-footer"><ShieldCheck size={16}/> Browser-only demo: no real person receives an invitation, and saved counts are not verified.</div>
+                        {/* {isTeachingActivity && !teacherIsMe && <button className="btn btn-outline full" onClick={() => navigate('review')}>Rate helpfulness (optional) <ArrowRight size={18}/></button>} */}
+                        <button className="btn btn-primary full" onClick={stopActivity}><MessageCircle size={16}/> Return to chat</button>
+                        <button className="btn btn-outline full" onClick={() => navigate('passport')}>View Skill Passport</button>
+                      </div>
+                    }
                   </div>
                 </ChatTabPanel>
               </div>
