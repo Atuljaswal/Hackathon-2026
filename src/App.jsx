@@ -9,7 +9,6 @@ import { PEOPLE, MODES, ACTIVITY_PROMPTS, EMPTY_PROGRESS, KEY, readDemo } from '
 import { Logo } from './components/Shared.jsx';
 import HomePage from './pages/HomePage.jsx';
 import InterestsPage from './pages/InterestsPage.jsx';
-import MatchingPage from './pages/MatchingPage.jsx';
 import ChatPage from './pages/ChatPage.jsx';
 import ReviewPage from './pages/ReviewPage.jsx';
 import SkillPassportPage from './pages/SkillPassportPage.jsx';
@@ -307,7 +306,7 @@ export default function App() {
           count={new Set([...categories, ...goal.split(',').map(v => v.trim().toLowerCase()).filter(Boolean)]).size} />}
       {authUser && (activeSession || viewingSession) && (
         <div className="persistent-session" hidden={!viewingSession}>
-          <LiveMatchingFlow key={authUser.uid} page={sessionPage}
+          <LiveMatchingFlow key={authUser.uid} page={sessionPage} chosenMode={chosenMode}
             categories={[...categories, ...goal.split(',').map(v => v.trim()).filter(Boolean)]}
             navigate={navigateWithinSession}
             onQueueChange={queue => setSessionQueueState({ uid: authUser.uid, queue })} />

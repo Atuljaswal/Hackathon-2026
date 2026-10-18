@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
-import { ArrowLeft, ArrowRight, CircleHelp, MessageCircle, Shuffle, ShieldCheck } from 'lucide-react';
 import { auth, db } from '../firebase.js';
-import { StageTag } from '../components/Shared.jsx';
+import MatchingPage from './MatchingPage.jsx';
 import ChatPage from './ChatPage.jsx';
 import { startAutomaticMatching } from '../services/autoMatchService.js';
 import {
@@ -12,7 +11,7 @@ import {
 import { sendMessage, watchMessages } from '../services/chatService.js';
 
 // This flow displays real Firebase matches; the old demo components are unchanged.
-export default function LiveMatchingFlow({ page, categories, navigate, onQueueChange }) {
+export default function LiveMatchingFlow({ page, categories, chosenMode, navigate, onQueueChange }) {
   const [queue, setQueue] = useState(undefined);
   const [incoming, setIncoming] = useState([]);
   const [outgoing, setOutgoing] = useState([]);
@@ -103,6 +102,7 @@ export default function LiveMatchingFlow({ page, categories, navigate, onQueueCh
   }
 
   const exitSearch = () => run(async () => { await leaveQueue(); navigate('interests'); });
+  const cancelSearch = () => run(async () => { await leaveQueue(); navigate('home'); });
   const leaveChat = () => run(async () => {
     if (accepted) await endMatch(accepted.id);
     else await leaveQueue();
@@ -136,34 +136,23 @@ export default function LiveMatchingFlow({ page, categories, navigate, onQueueCh
     </>;
   }
 
-  return <section className="flow-page wrap narrow-flow matching-page">
-    <div className="backline"><button className="back-button" disabled={busy} onClick={exitSearch}><ArrowLeft size={17}/> Edit interests</button>
-      <div className="step-label">Step 2 of 2</div></div>
-    <div className="progress-steps"><span className="step-current"/><span className="step-current"/><span/></div>
-    <div className="flow-title"><StageTag kind="green">Live matching</StageTag><h1>Meet your next connection</h1>
-      <p>We'll look for someone who shares at least one of your interests.</p></div>
-    {error && <p className="auth-error" role="alert">{error}</p>}
-    <div className="match-preview live-match-panel">
-      {pending ? <>
-        <h2>Meet {peerName}</h2><p>Shared interest: <strong>{pending.category}</strong></p>
-        <p>Both people must accept to start chatting.</p>
-        <p className="live-match-clock">{seconds === null ? 'Preparing timer…' : `${seconds}s`}</p>
-        {(pending.acceptedBy || []).includes(uid) ? <p>You accepted. Waiting for {peerName}…</p>
-          : <button className="btn btn-primary full" disabled={busy || seconds === 0}
-              onClick={() => run(() => acceptMatch(pending.id))}>Accept match <ArrowRight size={17}/></button>}
-        <button className="btn btn-outline full" disabled={busy} onClick={skip}>Skip / Find another person</button>
-      </> : accepted ? <>
-        <h2>You matched with {peerName}!</h2><p>Shared interest: {accepted.category}</p>
-        <button className="btn btn-primary full" onClick={() => navigate('chat')}><MessageCircle size={17}/> Open chat</button>
-      </> : queue?.status === 'waiting' ? <>
-        <h2>Searching for a match…</h2><p>{autoStatus}</p>
-        <p>Selected interests: {(queue.categories || categories).join(' · ')}</p>
-        <button className="btn btn-outline full" disabled={busy} onClick={exitSearch}>Change interests</button>
-      </> : <>
-        <CircleHelp size={30}/><h2>Not searching yet</h2><p>Join the queue to find a compatible person.</p>
-        <button className="btn btn-primary full" disabled={busy} onClick={() => run(() => joinQueue(categories))}>Start searching</button>
-      </>}
-    </div>
-    <p className="small-note"><ShieldCheck size={15}/> Match invitations expire after 60 seconds. You can skip or leave at any time.</p>
-  </section>;
+  return <MatchingPage
+    categories={queue?.categories || categories}
+    chosenMode={chosenMode}
+    queue={queue}
+    pending={pending}
+    accepted={accepted}
+    peerName={peerName}
+    seconds={seconds}
+    alreadyAccepted={(pending?.acceptedBy || []).includes(uid)}
+    autoStatus={autoStatus}
+    busy={busy}
+    error={error}
+    onEditInterests={exitSearch}
+    onCancel={cancelSearch}
+    onStartSearch={() => run(() => joinQueue(categories))}
+    onAccept={() => run(() => acceptMatch(pending.id))}
+    onDecline={skip}
+    onOpenChat={() => navigate('chat')}
+  />;
 }
